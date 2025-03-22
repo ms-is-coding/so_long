@@ -1,0 +1,144 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   hitbox.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/03/21 22:20:12 by smamalig          #+#    #+#             */
+/*   Updated: 2025/03/22 23:44:55 by smamalig         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "so_long.h"
+#include "mlx.h"
+
+t_hitbox g_hitboxes[TEX_COUNT] = {
+[TEX_EMPTY] = { 0, 0, 64, 64 },
+[TEX_WALL_TOP] = { 0, 0, 64, 48 },
+[TEX_WALL_BOTTOM] = { 0, 16, 64, 64 },
+[TEX_WALL_LEFT] = { 0, 0, 48, 64 },
+[TEX_WALL_RIGHT] = { 16, 0, 64, 64 },
+[TEX_CORNER_TL] = { 16, 16, 64, 64 },
+[TEX_CORNER_TR] = { 0, 16, 48, 64 },
+[TEX_CORNER_BL] = { 16, 0, 48, 64 },
+[TEX_CORNER_BR] = { 0, 0, 48, 48 },
+[TEX_CORNER_EXT_TL] = { 16, 16, 64, 64 },
+[TEX_CORNER_EXT_TR] = { 0, 16, 48, 64 },
+[TEX_CORNER_EXT_BL] = { 16, 0, 64, 48 },
+[TEX_CORNER_EXT_BR] = { 0, 0, 48, 48 },
+[TEX_CORNER_TJUNC_T] = { 0, 16, 64, 64 },
+[TEX_CORNER_TJUNC_B] = { 0, 0, 64, 48 },
+[TEX_CORNER_TJUNC_L] = { 16, 0, 64, 64 },
+[TEX_CORNER_TJUNC_R] = { 0, 0, 48, 64 },
+[TEX_JUNC_CROSS] = { 16, 16, 48, 48 },
+[TEX_TJUNC_T] = { 0, 0, 64, 64 },
+[TEX_TJUNC_B] = { 0, 0, 64, 64 },
+[TEX_TJUNC_L] = { 0, 0, 64, 64 },
+[TEX_TJUNC_R] = { 0, 0, 64, 64 },
+[TEX_LJUNC_TL] = { 16, 16, 48, 48 },
+[TEX_LJUNC_TR] = { 16, 16, 48, 48 },
+[TEX_LJUNC_BL] = { 16, 16, 48, 48 },
+[TEX_LJUNC_BR] = { 16, 16, 48, 48 },
+[TEX_PLATFORM] = { 16, 16, 48, 48 },
+[TEX_PLATFORM_T] = { 16, 0, 48, 48 },
+[TEX_PLATFORM_B] = { 16, 16, 48, 64 },
+[TEX_PLATFORM_L] = { 0, 16, 16, 48 },
+[TEX_PLATFORM_R] = { 48, 16, 64, 48 },
+[TEX_PLATFORM_H] = { 0, 16, 64, 48 },
+[TEX_PLATFORM_V] = { 16, 0, 48, 64 },
+[TEX_HLJUNC_TL] = { 16, 16, 64, 48 },
+[TEX_HLJUNC_TR] = { 0, 0, 64, 64 },
+[TEX_HLJUNC_BL] = { 0, 0, 64, 64 },
+[TEX_HLJUNC_BR] = { 0, 0, 64, 64 },
+[TEX_VLJUNC_TL] = { 0, 0, 64, 64 },
+[TEX_VLJUNC_TR] = { 0, 0, 64, 64 },
+[TEX_VLJUNC_BL] = { 0, 0, 64, 64 },
+[TEX_VLJUNC_BR] = { 0, 0, 64, 64 },
+[TEX_CORNERS_XTL] = { 0, 0, 64, 64 },
+[TEX_CORNERS_XTR] = { 0, 0, 64, 64 },
+[TEX_CORNERS_XBL] = { 0, 0, 64, 64 },
+[TEX_CORNERS_XBR] = { 0, 0, 64, 64 },
+[TEX_DIAG_TLBR] = { 0, 0, 64, 64 },
+[TEX_DIAG_TRBL] = { 0, 0, 64, 64 },
+[TEX_PLAYER] = { 0, 0, 64, 64 },
+[TEX_PORTAL] = { 0, 0, 64, 64},
+};
+
+void ft_line(t_renderer *renderer, t_point p0, t_point p1)
+{
+	int dx = ft_abs(p1.x - p0.x);
+	int dy = ft_abs(p1.y - p0.y);
+	int sx = (p0.x < p1.x) ? 1 : -1;
+	int sy = (p0.y < p1.y) ? 1 : -1;
+	int err = dx - dy;
+
+	int t;
+	void *frame = mlx_get_data_addr(renderer->frame, &t, &t, &t);
+
+	while (p0.x != p1.x || p0.y != p1.y)
+	{
+		if (p0.x >= 0 && p0.x < renderer->window.w && p0.y >= 0
+			&& p0.y < renderer->window.h) {
+			((uint32_t *)frame)[p0.y * renderer->window.w + p0.x] = DEBUG_COLOR;
+		}
+		int e2 = 2 * err;
+		if (e2 > -dy) {
+			err -= dy;
+			p0.x += sx;
+		}
+		if (e2 < dx)
+		{
+			err += dx;
+			p0.y += sy;
+		}
+	}
+}
+
+bool is_solid(int tile_x, int tile_y, t_hitbox *hitbox)
+{
+	int			tex_idx;
+	t_hitbox	box;
+
+	if (!is_wall(tile_x, tile_y))
+		return (0);
+	tex_idx = get_texture_index(compute_texture_mask(tile_x, tile_y));
+	box = g_hitboxes[tex_idx];
+	hitbox->l = tile_x * TILE_SIZE + box.l;
+	hitbox->t = tile_y * TILE_SIZE + box.t;
+	hitbox->r = tile_x * TILE_SIZE + box.r;
+	hitbox->b = tile_y * TILE_SIZE + box.b;
+	return (1);
+}
+
+t_hitbox ft_absolute_hitbox(int tile_x, int tile_y)
+{
+	int			tex_idx;
+	t_hitbox	box;
+
+	tex_idx = get_texture_index(compute_texture_mask(tile_x, tile_y));
+	box = g_hitboxes[tex_idx];
+	return (t_hitbox){
+		.l = tile_x * TILE_SIZE + box.l,
+		.t = tile_y * TILE_SIZE + box.t,
+		.r = tile_x * TILE_SIZE + box.r,
+		.b = tile_y * TILE_SIZE + box.b
+	};
+}
+
+void	render_hitbox(t_renderer *renderer, int index, int x, int y)
+{
+	t_hitbox hitbox = g_hitboxes[index];
+
+	int x0 = x * TILE_SIZE + hitbox.l;
+	int y0 = y * TILE_SIZE + hitbox.t;
+	int x1 = x * TILE_SIZE + hitbox.r;
+	int y1 = y * TILE_SIZE + hitbox.b;
+
+	ft_line(renderer, (t_point){ x0, y0 }, (t_point){ x1, y0 });
+	ft_line(renderer, (t_point){ x1, y0 }, (t_point){ x1, y1 });
+	ft_line(renderer, (t_point){ x1, y1 }, (t_point){ x0, y1 });
+	ft_line(renderer, (t_point){ x0, y1 }, (t_point){ x0, y0 });
+	ft_line(renderer, (t_point){ x0, y0 }, (t_point){ x1, y1 });
+	ft_line(renderer, (t_point){ x0, y1 }, (t_point){ x1, y0 });
+}
