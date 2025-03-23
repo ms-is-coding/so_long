@@ -6,13 +6,13 @@
 #    By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/13 20:22:30 by smamalig          #+#    #+#              #
-#    Updated: 2025/03/22 23:39:04 by smamalig         ###   ########.fr        #
+#    Updated: 2025/03/23 00:59:44 by smamalig         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME           = so_long
 CC             = cc
-CFLAGS         = -Wall -Wextra -Werror -g3 -fsanitize=address
+CFLAGS         = -Wall -Wextra -Werror -g3
 SRCS           = src/main.c src/textures.c src/hitbox.c
 OBJ_DIR        = obj
 OBJS           = $(patsubst src/%.c, $(OBJ_DIR)/%.o, $(SRCS))
@@ -62,14 +62,12 @@ clean:
 	@printf "$(BLUE)%12s$(RESET): $(RED)Cleaning object files...$(RESET)\n" $(NAME)
 	@rm -rf obj
 	@make -C $(LIBFT_DIR) clean --no-print-directory
-	@make -C $(LIBFT_GL_DIR) clean --no-print-directory
 	@make -C $(LIBMLX_DIR) clean --no-print-directory
 
 fclean: clean
 	@printf "$(BLUE)%12s$(RESET): $(RED)Full clean...$(RESET)\n" $(NAME)
 	@rm -f $(NAME)
 	@make -C $(LIBFT_DIR) fclean --no-print-directory
-	@make -C $(LIBFT_GL_DIR) fclean --no-print-directory
 
 re: fclean all
 

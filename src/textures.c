@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:13:32 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/23 00:15:33 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/23 11:39:59 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,7 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_DIAG_TLBR] = "assets/diag-tlbr.xpm",
 [TEX_DIAG_TRBL] = "assets/diag-trbl.xpm",
 [TEX_PLAYER] = "assets/player.xpm",
-// [TEX_PORTAL] = "assets/portal.xpm"
+[TEX_EXIT] = "assets/exit.xpm"
 };
 
 static int	ft_load_texture(t_renderer *renderer, char *name, int index)
@@ -89,7 +89,6 @@ static int	ft_load_texture(t_renderer *renderer, char *name, int index)
 			name, width, height);
 	}
 	renderer->textures[index] = image;
-	ft_printf("\e[95m[DBG]\e[m Loaded texture \'%s\'\n", name);
 	return (0);
 }
 

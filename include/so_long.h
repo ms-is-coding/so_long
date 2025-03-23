@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/23 00:17:41 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/23 13:49:36 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,10 +29,14 @@
 # define GRAVITY 0.2
 # define FRICTION 0.9
 # define JUMP_FORCE 5.8
+# define DASH_MULTIPLIER 3.5
+# define DASH_FRAMES 10
 
-# define MAP_SIZE 12
+# define MAP_WIDTH 32
+# define MAP_HEIGHT 32
 # define TILE_SIZE 64
-# define WINDOW_SIZE MAP_SIZE * TILE_SIZE
+# define WINDOW_W 800
+# define WINDOW_H 600
 
 typedef struct s_vector
 {
@@ -64,8 +68,8 @@ typedef struct s_hitbox
 
 typedef struct s_player
 {
-	float prev_x;
-	float prev_y;
+	float px;
+	float py;
 	float x;
 	float y;
 	float vx;
@@ -123,7 +127,7 @@ enum {
 	TEX_DIAG_TLBR,
 	TEX_DIAG_TRBL,
 	TEX_PLAYER,
-	TEX_PORTAL,
+	TEX_EXIT,
 	TEX_COUNT
 };
 
@@ -134,9 +138,11 @@ typedef struct s_renderer
 	void		*frame;
 	void		*textures[TEX_COUNT];
 	pthread_t	counter_thread;
-	int			keys;
 	t_player	player;
 	t_rect		window;
+	t_rect		map;
+	int			should_dash;
+	int			keys;
 }	t_renderer;
 
 int			ft_generate_map(t_renderer *renderer);
@@ -149,5 +155,7 @@ bool		is_wall(int x, int y);
 bool		is_solid(int x, int y, t_hitbox *box);
 void		render_hitbox(t_renderer *renderer, int tex_idx, int x, int y);
 void		ft_line(t_renderer *renderer, t_point p0, t_point p1);
+t_vector	translate(t_renderer *renderer, float x, float y);
+void		render_hitboxes(t_renderer *r);
 
 #endif

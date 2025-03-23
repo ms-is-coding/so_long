@@ -6,11 +6,12 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/23 00:36:50 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/23 13:56:00 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 
+#include "mlx_int.h"
 #include "so_long.h"
 #include "mlx.h"
 
@@ -23,20 +24,41 @@ atomic_int	g_frame_count = 0;
 atomic_int	g_running = 1;
 atomic_int	g_should_render = 1;
 int			g_debug_mode = 0;
+atomic_int	g_fps = 0;
 
-static char map[MAP_SIZE][MAP_SIZE] = {
-	"111111111111",
-	"10P100000001",
-	"101101010011",
-	"100001010111",
-	"111011010001",
-	"101010010101",
-	"100011010001",
-	"110000000001",
-	"110001000001",
-	"100011100001",
-	"101001000111",
-	"111111111111",
+static char map[MAP_HEIGHT][MAP_WIDTH] = {
+	"11111111111111111111111111111111",
+	"1P000000000000000000000000000001",
+	"11111101111111111111111111111101",
+	"10000000000000000000000000000001",
+	"10111111011111111111111111111111",
+	"10000000000000000000000000000001",
+	"11111111111011111111111111111101",
+	"10000000000000000000000000000001",
+	"10111111111111011111111111111111",
+	"10000000000000000000000000000001",
+	"11111111111111111011111111111101",
+	"10000000000000000000000000000001",
+	"10111111111111111111111111111111",
+	"10000000000000000000000000000001",
+	"11111111111111111111111111111101",
+	"10000000000000000000000000000001",
+	"10111111111111111111111111111111",
+	"10000000000000000000000000000001",
+	"11111111111111111111111111111101",
+	"10000000000000000000000000000001",
+	"10111111111111111111111111111111",
+	"10000000000000000000000000000001",
+	"11111111111111111111111111111101",
+	"10000000000000000000000000000001",
+	"10111111111111111111111111111111",
+	"10000000000000000000000000000001",
+	"11111111111111111111111111111101",
+	"10000000000000000000000000000001",
+	"10111111111111111111111111111111",
+	"10000000000000000000000000000001",
+	"10000000000000000000000000000001",
+	"11111111111111111111111111111111",
 };
 
 static char texture_index_lookup[0x100] = {
@@ -144,6 +166,21 @@ static char texture_index_lookup[0x100] = {
 [0x60] = TEX_LJUNC_BL,
 [0x61] = TEX_LJUNC_BL,
 [0x62] = TEX_CORNER_EXT_TR,
+[0x63] = TEX_CORNER_EXT_TR,
+[0x64] = TEX_LJUNC_BL,
+[0x65] = TEX_LJUNC_BL,
+[0x66] = TEX_CORNER_EXT_TR,
+[0x67] = TEX_CORNER_EXT_TR,
+[0x68] = TEX_LJUNC_BL,
+[0x69] = TEX_LJUNC_BL,
+[0x6a] = TEX_CORNER_EXT_TR,
+[0x6b] = TEX_CORNER_EXT_TR,
+[0x6c] = TEX_LJUNC_BL,
+[0x6d] = TEX_LJUNC_BL,
+[0x6e] = TEX_CORNER_EXT_TR,
+[0x6f] = TEX_CORNER_EXT_TR,
+
+
 [0x70] = TEX_TJUNC_B,
 [0x71] = TEX_HLJUNC_BL,
 [0x72] = TEX_HLJUNC_BR,
@@ -314,8 +351,8 @@ uint32_t	blend_pixel(uint32_t fg, uint32_t bg)
 
 bool is_wall(int tx, int ty)
 {
-	return (tx < 0 || tx >= MAP_SIZE || ty < 0
-		|| ty >= MAP_SIZE || map[ty][tx] == '1');
+	return (tx < 0 || tx >= MAP_WIDTH || ty < 0
+		|| ty >= MAP_HEIGHT || map[ty][tx] == '1');
 }
 
 int	compute_texture_mask(int x, int y)
@@ -336,15 +373,7 @@ int	compute_texture_mask(int x, int y)
 
 int	get_texture_index(int mask)
 {
-
 	return (texture_index_lookup[mask]);
-}
-
-void *get_texture(t_renderer *renderer, int x, int y) {
-    if (!is_wall(x, y)) return NULL;
-
-	int mask = compute_texture_mask(x, y);
-	return renderer->textures[get_texture_index(mask)];
 }
 
 void	*counter_thread()
@@ -354,8 +383,8 @@ void	*counter_thread()
 		ft_usleep(1000000 / 60);
 		g_should_render = 1;
 		frames++;
-		if (frames == 60) {
-			ft_printf("\rFPS: %i", g_frame_count);
+		if (frames == 30) {
+			g_fps = g_frame_count * 2;
 			frames = 0;
 			g_frame_count = 0;
 		}
@@ -364,155 +393,184 @@ void	*counter_thread()
 }
 
 
-int	cleanup(t_renderer *renderer)
+int	cleanup(t_renderer *r)
 {
 	int	tex_idx;
 
 	tex_idx = 0;
 	g_running = 0;
-	pthread_join(renderer->counter_thread, NULL);
+	pthread_join(r->counter_thread, NULL);
 	while (tex_idx < TEX_COUNT)
 	{
-		if (renderer->textures[tex_idx]) {
-			mlx_destroy_image(renderer->mlx, renderer->textures[tex_idx]);
-			renderer->textures[tex_idx] = 0;
+		if (r->textures[tex_idx]) {
+			mlx_destroy_image(r->mlx, r->textures[tex_idx]);
+			r->textures[tex_idx] = 0;
 		}
 		tex_idx++;
 	}
-	if (renderer->frame)
-		mlx_destroy_image(renderer->mlx, renderer->frame);
-	if (renderer->win)
-		mlx_destroy_window(renderer->mlx, renderer->win);
-	if (renderer->mlx)
+	if (r->frame)
+		mlx_destroy_image(r->mlx, r->frame);
+	if (r->win)
+		mlx_destroy_window(r->mlx, r->win);
+	if (r->mlx)
 	{
-		mlx_destroy_display(renderer->mlx);
-		free(renderer->mlx);
+		mlx_destroy_display(r->mlx);
+		free(r->mlx);
 	}
 	return (0);
 }
 
-int	on_destroy(t_renderer *renderer)
+int	on_destroy(t_renderer *r)
 {
-	cleanup(renderer);
+	cleanup(r);
 	exit(0);
 	return (0);
 }
 
-void	render_hitboxes(t_renderer *renderer);
-
-int	on_key_press(int keysym, t_renderer *renderer)
+int	on_key_press(int keysym, t_renderer *r)
 {
 	if (keysym == XK_Escape)
-		return (on_destroy(renderer));
+		return (on_destroy(r));
 
 	if (keysym == XK_w || keysym == XK_Up || keysym == XK_space)
 	{
-		renderer->player.vy -= JUMP_FORCE;
+		r->player.vy -= JUMP_FORCE;
 	}
 	if (keysym == XK_g)
 	{
 		g_debug_mode ^= 1;
-		render_hitboxes(renderer);
+		render_hitboxes(r);
 	}
+	if (keysym == XK_Shift_L || keysym == XK_Shift_R)
+		r->should_dash = DASH_FRAMES;
 	if (keysym == XK_a || keysym == XK_Left)
-		renderer->keys |= KEY_LEFT;
+		r->keys |= KEY_LEFT;
 	if (keysym == XK_d || keysym == XK_Right)
-		renderer->keys |= KEY_RIGHT;
+		r->keys |= KEY_RIGHT;
 	return (0);
 }
 
-int	on_key_release(int keysym, t_renderer *renderer)
+int	on_key_release(int keysym, t_renderer *r)
 {
 	if (keysym == XK_a || keysym == XK_Left)
-		renderer->keys &= ~KEY_LEFT;
+		r->keys &= ~KEY_LEFT;
 	if (keysym == XK_d || keysym == XK_Right)
-		renderer->keys &= ~KEY_RIGHT;
+		r->keys &= ~KEY_RIGHT;
 	return (0);
 }
 
-void	ft_fill_tile(t_renderer *renderer, int x, int y)
+t_vector translate(t_renderer *r, float x, float y)
 {
-	int t;
-	void *bg = mlx_get_data_addr(renderer->frame, &t, &t, &t);
+	return (t_vector){
+		.x = x - r->window.x,
+		.y = y - r->window.y
+	};
+}
 
-	if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE)
-		return ;
+int	ft_fill_tile(t_renderer *r, int tx, int ty)
+{
+	int _;
+	void *bg = mlx_get_data_addr(r->frame, &_, &_, &_);
+	if (!bg)
+		return (1);
 
+	if (tx < 0 || ty < 0 || tx >= MAP_WIDTH || ty >= MAP_HEIGHT)
+		return (0);
+
+	t_vector t = translate(r, tx * TILE_SIZE, ty * TILE_SIZE);
 	for (int j = 0; j < TILE_SIZE; j++) {
+		if (t.y + j >= r->window.h || t.y + j < 0)
+			continue;
 		for (int i = 0; i < TILE_SIZE; i++) {
-			int bg_idx = ((y * TILE_SIZE + j) * renderer->window.w) + (x * TILE_SIZE + i);
-			((uint32_t *)bg)[bg_idx] = g_debug_mode ? DEBUG_COLOR : BG_COLOR;
+			if (t.x + i > r->window.w || t.x + i < 0)
+				continue;
+			int bg_idx = ((t.y + j) * r->window.w) + (t.x + i);
+			((uint32_t *)bg)[bg_idx] = BG_COLOR;
 		}
 	}
+	return (0);
 }
 
 
-int	ft_generate_map(t_renderer *renderer);
+int	ft_generate_map(t_renderer *r);
 
-void	set_player_position(t_renderer *renderer, int i, int j)
+void	set_player_position(t_renderer *r, int tx, int ty)
 {
-	renderer->player.x = i * TILE_SIZE + .5 * (TILE_SIZE - renderer->player.w);
-	renderer->player.y = j * TILE_SIZE + .5 * (TILE_SIZE - renderer->player.h);
+	r->player.x = tx * TILE_SIZE + .5 * (TILE_SIZE - r->player.w);
+	r->player.y = ty * TILE_SIZE + .5 * (TILE_SIZE - r->player.h);
+	r->player.px = r->player.x;
+	r->player.py = r->player.y;
 }
 
-void	render_hitboxes(t_renderer *renderer)
+void	render_hitboxes(t_renderer *r)
 {
 	if (!g_debug_mode) {
-		ft_generate_map(renderer);
+		ft_generate_map(r);
 		return;
 	}
-	for (int j = 0; j < MAP_SIZE; j++) {
-		for (int i = 0; i < MAP_SIZE; i++) {
+	for (int j = 0; j < MAP_HEIGHT; j++) {
+		for (int i = 0; i < MAP_WIDTH; i++) {
 			if (!is_wall(i, j)) continue ;
 			int mask = compute_texture_mask(i, j);
-			int index = get_texture_index(mask);
-			render_hitbox(renderer, index, i, j);
+			int tex_idx = get_texture_index(mask);
+			render_hitbox(r, tex_idx, i, j);
 		}
 	}
 }
 
-
-void	player_hitbox(t_renderer *renderer)
+void	player_hitbox(t_renderer *r)
 {
 	if (!g_debug_mode)
 		return ;
-	int x0 = renderer->player.x;
-	int y0 = renderer->player.y;
-	int x1 = renderer->player.x + renderer->player.w;
-	int y1 = renderer->player.y + renderer->player.h;
 
-	ft_line(renderer, (t_point){ x0, y0 }, (t_point){ x1, y0 });
-	ft_line(renderer, (t_point){ x1, y0 }, (t_point){ x1, y1 });
-	ft_line(renderer, (t_point){ x1, y1 }, (t_point){ x0, y1 });
-	ft_line(renderer, (t_point){ x0, y1 }, (t_point){ x0, y0 });
-	ft_line(renderer, (t_point){ x0, y0 }, (t_point){ x1, y1 });
-	ft_line(renderer, (t_point){ x0, y1 }, (t_point){ x1, y0 });
+	t_vector t0 = translate(r, r->player.x, r->player.y);
+	t_vector t1 = translate(r, r->player.x + r->player.w, r->player.y + r->player.h);
+
+	ft_line(r, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t0.y });
+	ft_line(r, (t_point){ t1.x, t0.y }, (t_point){ t1.x, t1.y });
+	ft_line(r, (t_point){ t1.x, t1.y }, (t_point){ t0.x, t1.y });
+	ft_line(r, (t_point){ t0.x, t1.y }, (t_point){ t0.x, t0.y });
+	ft_line(r, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t1.y });
+	ft_line(r, (t_point){ t0.x, t1.y }, (t_point){ t1.x, t0.y });
 }
 
-void	ft_image_to_vbuffer(t_renderer *renderer, int texture_index, int x, int y);
+void	ft_image_to_vbuffer(t_renderer *r, int texture_index, int x, int y);
 
-void	ft_render_tile(t_renderer *renderer, int x, int y)
+void	ft_render_tile(t_renderer *r, int tx, int ty)
 {
-	if (!is_wall(x, y))
-		return ft_fill_tile(renderer, x, y);
-	int mask = compute_texture_mask(x, y);
-	int index = get_texture_index(mask);
-	ft_image_to_vbuffer(renderer, index, x * TILE_SIZE, y * TILE_SIZE);
+	if (!is_wall(tx, ty)) {
+		ft_fill_tile(r, tx, ty);
+		return ;
+	}
+	int mask = compute_texture_mask(tx, ty);
+	int tex_idx = get_texture_index(mask);
+	t_vector t = translate(r, tx * TILE_SIZE, ty * TILE_SIZE);
+	ft_image_to_vbuffer(r, tex_idx, t.x, t.y);
 	if (g_debug_mode)
-		render_hitbox(renderer, index, x, y);
+		render_hitbox(r, tex_idx, tx, ty);
 }
 
-void	player_update_tiles(t_renderer *renderer)
+void	player_update_tiles(t_renderer *r)
 {
-	int	x0 = renderer->player.x / TILE_SIZE;
-	int	y0 = (renderer->player.y) / TILE_SIZE;
-	int	x1 = (renderer->player.x + renderer->player.w) / TILE_SIZE;
-	int	y1 = (renderer->player.y + renderer->player.h) / TILE_SIZE;
+	int x0_ = r->player.px / TILE_SIZE;
+	int y0_ = r->player.py / TILE_SIZE;
+	int x1_ = (r->player.px + r->player.w) / TILE_SIZE;
+	int y1_ = (r->player.py + r->player.h) / TILE_SIZE;
 
-	ft_render_tile(renderer, x0, y0);
-	ft_render_tile(renderer, x0, y1);
-	ft_render_tile(renderer, x1, y0);
-	ft_render_tile(renderer, x1, y1);
+	int	x0 = r->player.x / TILE_SIZE;
+	int	y0 = r->player.y / TILE_SIZE;
+	int	x1 = (r->player.x + r->player.w) / TILE_SIZE;
+	int	y1 = (r->player.y + r->player.h) / TILE_SIZE;
+
+	ft_render_tile(r, x0_, y0_);
+	ft_render_tile(r, x0_, y1_);
+	ft_render_tile(r, x1_, y0_);
+	ft_render_tile(r, x1_, y1_);
+
+	ft_render_tile(r, x0, y0);
+	ft_render_tile(r, x0, y1);
+	ft_render_tile(r, x1, y0);
+	ft_render_tile(r, x1, y1);
 }
 
 int horizontal_overlap(t_player *player, t_hitbox box) {
@@ -525,7 +583,7 @@ int vertical_overlap(t_player *player, t_hitbox box) {
 
 void move_down(t_player *p, t_hitbox box) {
 	float overlap = p->y + p->h - box.t;
-	float prev_overlap = p->prev_y + p->h - box.t;
+	float prev_overlap = p->py + p->h - box.t;
 	if (prev_overlap <= 0 && overlap > 0 && horizontal_overlap(p, box)) {
 		p->vy = 0;
 		p->y = box.t - p->h - 0.01f;
@@ -534,7 +592,7 @@ void move_down(t_player *p, t_hitbox box) {
 
 void move_up(t_player *p, t_hitbox box) {
 	float overlap = box.b - p->y;
-	float prev_overlap = box.b - p->prev_y;
+	float prev_overlap = box.b - p->py;
 	if (prev_overlap <= 0 && overlap > 0 && horizontal_overlap(p, box)) {
 		p->vy = 0;
 		p->y = box.b + 0.01f;
@@ -543,7 +601,7 @@ void move_up(t_player *p, t_hitbox box) {
 
 void move_right(t_player *p, t_hitbox box) {
 	float overlap = p->x + p->w - box.l;
-	float prev_overlap = p->prev_x + p->w - box.l;
+	float prev_overlap = p->px + p->w - box.l;
 	if (prev_overlap <= 0 && overlap > 0 && vertical_overlap(p, box)) {
 		p->vx = 0;
 		p->x = box.l - p->w - 0.01f;
@@ -551,29 +609,36 @@ void move_right(t_player *p, t_hitbox box) {
 }
 void move_left(t_player *p, t_hitbox box) {
 	float overlap = box.r - p->x;
-	float prev_overlap = box.r - p->prev_x;
+	float prev_overlap = box.r - p->px;
 	if (prev_overlap <= 0 && overlap > 0 && vertical_overlap(p, box)) {
 		p->vx = 0;
 		p->x = box.r + 0.01f;
 	}
 }
 
-void ft_player_update(t_renderer *renderer) {
+void ft_player_update(t_renderer *r) {
 	t_player	*p;
 	t_hitbox	box;
 
-	player_update_tiles(renderer);
-	player_hitbox(renderer);
-	p = &renderer->player;
+	player_update_tiles(r);
+	player_hitbox(r);
+	p = &r->player;
 	p->vx *= FRICTION;
 	p->vy += GRAVITY;
-	if (renderer->keys & KEY_LEFT)
+	if (r->keys & KEY_LEFT)
 		p->vx = -VELOCITY;
-	else if (renderer->keys & KEY_RIGHT)
+	else if (r->keys & KEY_RIGHT)
 		p->vx = VELOCITY;
+	if (r->should_dash) {
+		if (r->keys & KEY_LEFT)
+			p->vx = -VELOCITY * DASH_MULTIPLIER;
+		if (r->keys & KEY_RIGHT)
+			p->vx = VELOCITY * DASH_MULTIPLIER;
+		r->should_dash--;
+	}
 	float	new_x = p->x + p->vx;
 	float	new_y = p->y + p->vy;
-	p->prev_x = p->x;
+	p->px = p->x;
 	p->x = new_x;
 	int	x0 = p->x / TILE_SIZE;
 	int	y0 = p->y / TILE_SIZE;
@@ -593,7 +658,7 @@ void ft_player_update(t_renderer *renderer) {
 				move_left(p, box);
 		}
 	}
-	p->prev_y = p->y;
+	p->py = p->y;
 	p->y = new_y;
 	x0 = p->x / TILE_SIZE;
 	y0 = p->y / TILE_SIZE;
@@ -615,142 +680,202 @@ void ft_player_update(t_renderer *renderer) {
 	}
 }
 
-void	ft_image_to_vbuffer(t_renderer *renderer, int texture_index, int x, int y)
+void	ft_image_to_vbuffer(t_renderer *r, int tex_idx, int x, int y)
 {
-	int	size_line = 0;
-	int	bpp = 0;
-	int	endian = 0;
+	int	_;
 
-	void	*bg = mlx_get_data_addr(renderer->frame, &bpp, &size_line, &endian);
-	void	*fg = mlx_get_data_addr(renderer->textures[texture_index], &bpp, &size_line, &endian);
+	void	*bg = mlx_get_data_addr(r->frame, &_, &_, &_);
+	void	*fg = mlx_get_data_addr(r->textures[tex_idx], &_, &_, &_);
 
 	for (int j = 0; j < TILE_SIZE; j++) {
+		if (y + j > r->window.h) continue;
+		if (y + j < 0) continue ;
 		for (int i = 0; i < TILE_SIZE; i++) {
 			int fg_idx = j * TILE_SIZE + i;
-			int bg_idx = ((y + j) * renderer->window.w) + (x + i);
+			int bg_idx = ((y + j) * r->window.w) + (x + i);
 
-			if (x + i > renderer->window.w) continue;
-			if (y + j > renderer->window.w) continue;
+			if (x + i > r->window.w) continue;
 			if (x + i < 0) continue ;
-			if (y + j < 0) continue ;
 
-			uint32_t fg_pixel = ((uint32_t *)fg)[fg_idx];
-			uint32_t bg_pixel = ((uint32_t *)bg)[bg_idx];
+			uint32_t fg_px = ((uint32_t *)fg)[fg_idx];
+			uint32_t bg_px = ((uint32_t *)bg)[bg_idx];
 
-			if (texture_index != TEX_PLAYER)
-				((uint32_t *)bg)[bg_idx] = blend_pixel(fg_pixel, g_debug_mode ? DEBUG_COLOR : BG_COLOR);
+			if (tex_idx != TEX_PLAYER)
+				((uint32_t *)bg)[bg_idx] = blend_pixel(fg_px, BG_COLOR);
 			else
-				((uint32_t *)bg)[bg_idx] = blend_pixel(fg_pixel, bg_pixel);
+				((uint32_t *)bg)[bg_idx] = blend_pixel(fg_px, bg_px);
 		}
 	}
 }
 
-int	render(t_renderer *renderer)
+void	ft_camera_update(t_renderer *r)
+{
+	int had_change = 0;
+	int x_margin = 0;
+	int y_margin = 0;
+	if (r->player.x - x_margin > r->window.x + r->window.w / 2.
+		&& r->window.x + r->window.w < r->map.w) {
+		r->window.x = r->player.x - r->window.w / 2. - x_margin;
+		had_change = 1;
+	} else if (r->player.x + x_margin < r->window.x + r->window.w / 2.
+		&& r->window.x > 0) {
+		r->window.x = r->player.x - r->window.w / 2. + x_margin;
+		had_change = 1;
+	}
+	if (r->player.y - y_margin > r->window.y + r->window.h / 2.
+		&& r->window.y + r->window.h < r->map.h) {
+		r->window.y = r->player.y - r->window.h / 2. - y_margin;
+		had_change = 1;
+	} else if (r->player.y + y_margin < r->window.y + r->window.h / 2.
+		&& r->window.y > 0) {
+		r->window.y = r->player.y - r->window.h / 2. + y_margin;
+		had_change = 1;
+	}
+	if (had_change)
+	{
+		ft_generate_background(r);
+		ft_generate_map(r);
+		render_hitboxes(r);
+	}
+}
+
+int	render(t_renderer *r)
 {
 	if (!g_should_render)
 		return (0);
 	g_frame_count++;
 	g_should_render = 0;
-	ft_player_update(renderer);
-	ft_image_to_vbuffer(renderer, TEX_PLAYER,
-		renderer->player.x - .5 * (TILE_SIZE - renderer->player.w),
-		renderer->player.y - .5 * (TILE_SIZE - renderer->player.h));
-	mlx_put_image_to_window(renderer->mlx, renderer->win, renderer->frame, 0, 0);
+	ft_player_update(r);
+	ft_camera_update(r);
+	t_vector t = translate(r,
+		r->player.x - .5 * (TILE_SIZE - r->player.w),
+		r->player.y - .5 * (TILE_SIZE - r->player.h));
+	ft_image_to_vbuffer(r, TEX_PLAYER, t.x, t.y);
+	mlx_put_image_to_window(r->mlx, r->win, r->frame, 0, 0);
+	if (g_debug_mode)
+	{
+		char buffer[24];
+		ft_snprintf(buffer, 24, "%i FPS", g_fps);
+		mlx_string_put(r->mlx, r->win, 10, 20, DEBUG_COLOR, buffer);
+	}
 	return (0);
 }
 
-int	ft_register_hooks(t_renderer *renderer)
+int	ft_register_hooks(t_renderer *r)
 {
-	mlx_hook(renderer->win, KeyPress, KeyPressMask,	on_key_press, renderer);
-	mlx_hook(renderer->win, KeyRelease, KeyReleaseMask,	on_key_release,
-		renderer);
-	mlx_hook(renderer->win, DestroyNotify, 0, on_destroy, renderer);
-	mlx_loop_hook(renderer->mlx, render, renderer);
+	mlx_hook(r->win, KeyPress, KeyPressMask,	on_key_press, r);
+	mlx_hook(r->win, KeyRelease, KeyReleaseMask,	on_key_release,
+		r);
+	mlx_hook(r->win, DestroyNotify, 0, on_destroy, r);
+	mlx_loop_hook(r->mlx, render, r);
 	return (0);
 }
 
-int	ft_init_player(t_renderer *renderer)
+int	ft_init_player(t_renderer *r)
 {
-	ft_memset(renderer->textures, 0, sizeof(void *) * TEX_COUNT);
-	renderer->player.w = 32;
-	renderer->player.h = 56;
-	renderer->window.x = 0;
-	renderer->window.y = 0;
-	renderer->window.w = WINDOW_SIZE;
-	renderer->window.h = WINDOW_SIZE;
+	r->player.w = 32;
+	r->player.h = 56;
+	r->window.w = WINDOW_W;
+	r->window.h = WINDOW_H;
+	r->map.w = MAP_WIDTH * TILE_SIZE;
+	r->map.h = MAP_HEIGHT * TILE_SIZE;
+	if (r->map.w < r->window.w)
+		r->window.x = (r->map.w - r->window.w) / 2;
+	if (r->map.h < r->window.h)
+		r->window.y = (r->map.h - r->window.h) / 2;
 	return (0);
 }
 
-int	ft_generate_map(t_renderer *renderer)
+
+int	ft_generate_map(t_renderer *r)
 {
-	for (int j = 0; j < MAP_SIZE; j++) {
-		for (int i = 0; i < MAP_SIZE; i++) {
-			if (map[j][i] == 'P')
-				set_player_position(renderer, i, j);
+	for (int j = 0; j < MAP_HEIGHT; j++) {
+		for (int i = 0; i < MAP_WIDTH; i++) {
+			t_vector t = translate(r, i * TILE_SIZE, j * TILE_SIZE);
+			if (map[j][i] == 'P' && r->player.x == 0 && r->player.y == 0)
+				set_player_position(r, i, j);
 			if (map[j][i] == 'E')
-				ft_image_to_vbuffer(renderer, TEX_PORTAL, i * TILE_SIZE, j * TILE_SIZE);
+				ft_image_to_vbuffer(r, TEX_EXIT, t.x, t.y);
 			if (!is_wall(i, j)) continue ;
 			int mask = compute_texture_mask(i, j);
-			int idx = get_texture_index(mask);
-			ft_image_to_vbuffer(renderer, idx,
-				i * TILE_SIZE, j * TILE_SIZE);
+			int tex_idx = get_texture_index(mask);
+			ft_image_to_vbuffer(r, tex_idx, t.x, t.y);
 		}
 	}
 	return (0);
 }
 
-int	ft_generate_background(t_renderer *renderer)
+int	ft_generate_background(t_renderer *r)
 {
-	for(int j = 0; j < MAP_SIZE; j++) {
-		for (int i = 0; i < MAP_SIZE; i++)
-			ft_fill_tile(renderer, i, j);
-	}
+	for(int j = 0; j < MAP_HEIGHT; j++)
+		for (int i = 0; i < MAP_WIDTH; i++)
+			if (ft_fill_tile(r, i, j))
+				return (1);
 	return (0);
 }
 
-int	ft_init_renderer(t_renderer *renderer)
+void	ft_debug(char *info)
 {
-	renderer->keys = 0;
-	renderer->mlx = mlx_init();
-	if (!renderer->mlx)
+	ft_printf("\e[95m[DBG]\e[m %s\n", info);
+}
+
+int	ft_init_renderer(t_renderer *r)
+{
+	r->keys = 0;
+	r->mlx = mlx_init();
+	if (!r->mlx)
 		return (1);
-	if (ft_load_textures(renderer))
+	ft_debug("Initialized MLX");
+	if (ft_load_textures(r))
 		return (1);
-	ft_init_player(renderer);
-	renderer->win = mlx_new_window(renderer->mlx, WINDOW_SIZE, WINDOW_SIZE,
+	ft_debug("Loaded textures");
+	ft_init_player(r);
+	ft_debug("Initialized player");
+	r->win = mlx_new_window(r->mlx, WINDOW_W, WINDOW_H,
 		"So Long");
-	if (!renderer->win)
+	if (!r->win)
 	{
 		ft_printf("\e[91m[ERR]\e[m Failed to create a window\n");
-		free(renderer->mlx);
+		free(r->mlx);
 		return (1);
 	}
-	renderer->frame = mlx_new_image(renderer->mlx, WINDOW_SIZE, WINDOW_SIZE);
-	if (ft_generate_background(renderer))
+	ft_debug("Created window");
+	r->frame = mlx_new_image(r->mlx, WINDOW_W, WINDOW_H);
+	if (!r->frame)
+	{
+		ft_printf("\e[91m[ERR]\e[m Failed to generate frame\n");
+	}
+	ft_debug("Prepared frame");
+	if (ft_generate_background(r))
 	{
 		ft_printf("\e[91m[ERR]\e[m Failed to render background\n");
 		return (1);
 	}
-	if (ft_generate_map(renderer))
+	ft_debug("Generated background");
+	if (ft_generate_map(r))
 	{
 		ft_printf("\x1b[91m[ERR]\x1b[m Failed to generate map\n");
 		return (1);
 	}
-	ft_register_hooks(renderer);
+	ft_debug("Generated map");
+	ft_register_hooks(r);
+	ft_debug("Registered hooks");
 	return (0);
 }
 
 int	main(void)
 {
-	t_renderer	renderer;
-
-	pthread_create(&renderer.counter_thread, NULL, counter_thread, NULL);
-	if (ft_init_renderer(&renderer))
+	t_renderer	r;
+	ft_memset(&r, 0, sizeof(t_renderer));
+	
+	ft_printf("\e[94m[INF]\e[m Starting game\n");
+	pthread_create(&r.counter_thread, NULL, counter_thread, NULL);
+	if (ft_init_renderer(&r))
 	{
-		cleanup(&renderer);
+		cleanup(&r);
 		return (1);
 	}
-	mlx_loop(renderer.mlx);
-	on_destroy(&renderer);
+	mlx_loop(r.mlx);
+	on_destroy(&r);
 	return (0);
 }
