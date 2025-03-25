@@ -1,6 +1,6 @@
-[submodule "libft"]
-	path = libft
-	url = https://github.com/ms-is-coding/libft-reloaded
 [submodule "libmlx"]
 	path = libmlx
 	url = https://github.com/42paris/minilibx-linux
+[submodule "libft"]
+	path = libft
+	url = https://git.hadronlang.com/ms/libft-reloaded

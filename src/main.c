@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/23 13:56:00 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/24 23:01:25 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,12 +19,9 @@
 #include <X11/X.h>
 #include <stdatomic.h>
 #include <stdint.h>
+#include <time.h>
 
-atomic_int	g_frame_count = 0;
-atomic_int	g_running = 1;
-atomic_int	g_should_render = 1;
-int			g_debug_mode = 0;
-atomic_int	g_fps = 0;
+int	g_debug_mode = 0;
 
 static char map[MAP_HEIGHT][MAP_WIDTH] = {
 	"11111111111111111111111111111111",
@@ -39,23 +36,23 @@ static char map[MAP_HEIGHT][MAP_WIDTH] = {
 	"10000000000000000000000000000001",
 	"11111111111111111011111111111101",
 	"10000000000000000000000000000001",
-	"10111111111111111111111111111111",
+	"10111111111111111110111111111111",
 	"10000000000000000000000000000001",
-	"11111111111111111111111111111101",
+	"11111111111111111111101111111101",
 	"10000000000000000000000000000001",
-	"10111111111111111111111111111111",
+	"10111111111111111111111011111111",
 	"10000000000000000000000000000001",
-	"11111111111111111111111111111101",
+	"11111111111111111111111110111101",
 	"10000000000000000000000000000001",
-	"10111111111111111111111111111111",
+	"10111111111111111111111111101111",
 	"10000000000000000000000000000001",
-	"11111111111111111111111111111101",
+	"11111111111111111111111110111101",
 	"10000000000000000000000000000001",
-	"10111111111111111111111111111111",
+	"10111111111111111111111011111111",
 	"10000000000000000000000000000001",
-	"11111111111111111111111111111101",
+	"11111111111111111111101111111101",
 	"10000000000000000000000000000001",
-	"10111111111111111111111111111111",
+	"10111111111111111110111111111111",
 	"10000000000000000000000000000001",
 	"10000000000000000000000000000001",
 	"11111111111111111111111111111111",
@@ -65,6 +62,7 @@ static char texture_index_lookup[0x100] = {
 [0x00] = TEX_PLATFORM,
 [0x01] = TEX_PLATFORM,
 [0x02] = TEX_PLATFORM,
+[0x03] = TEX_PLATFORM,
 [0x04] = TEX_PLATFORM,
 [0x05] = TEX_PLATFORM,
 [0x06] = TEX_PLATFORM,
@@ -337,16 +335,37 @@ static char texture_index_lookup[0x100] = {
 
 uint32_t	blend_pixel(uint32_t fg, uint32_t bg)
 {
-    float	alpha;
+	float	alpha;
 	uint8_t	r;
 	uint8_t	g;
 	uint8_t	b;
 
-	alpha = 1 - ((fg >> 24) & 0xFF) / 255.0f;
-	r = ((fg >> 16) & 0xFF) * alpha + ((bg >> 16) & 0xFF) * (1 - alpha);
-	g = ((fg >> 8) & 0xFF) * alpha + ((bg >> 8) & 0xFF) * (1 - alpha);
-	b = (fg & 0xFF) * alpha + (bg & 0xFF) * (1 - alpha);
+	alpha = 1 - (fg >> 24) / 255.0f;
+	if (alpha == 1) return fg;
+	if (alpha == 0) return bg;
+	r = ((fg >> 16) & 0xff) * alpha + ((bg >> 16) & 0xff) * (1 - alpha);
+	g = ((fg >> 8) & 0xff) * alpha + ((bg >> 8) & 0xff) * (1 - alpha);
+	b = (fg & 0xff) * alpha + (bg & 0xff) * (1 - alpha);
 	return ((r << 16) | (g << 8) | b);
+}
+
+static inline uint32_t blend_pixel_fast(uint32_t fg, uint32_t bg) {
+	uint32_t	inv_a;
+	uint32_t	a;
+	uint32_t	r;
+	uint32_t	g;
+	uint32_t	b;
+	
+	inv_a = ((fg >> 24) & 0xff) + 1;
+	if (inv_a == 0)
+		return bg;
+	if (inv_a == 255)
+		return fg;
+	a = 256 - inv_a;
+	r = (((fg >> 16) & 0xff) * a + ((bg >> 16) & 0xff) * inv_a) >> 8;
+	g = (((fg >> 8) & 0xff) * a + ((bg >> 8) & 0xff) * inv_a) >> 8;
+	b = ((fg & 0xff) * a + (bg & 0xff) * inv_a) >> 8;
+	return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
 bool is_wall(int tx, int ty)
@@ -376,30 +395,17 @@ int	get_texture_index(int mask)
 	return (texture_index_lookup[mask]);
 }
 
-void	*counter_thread()
-{
-	int	frames = 0;
-	while (g_running) {
-		ft_usleep(1000000 / 60);
-		g_should_render = 1;
-		frames++;
-		if (frames == 30) {
-			g_fps = g_frame_count * 2;
-			frames = 0;
-			g_frame_count = 0;
-		}
-	}
-	return NULL;
-}
-
 
 int	cleanup(t_renderer *r)
 {
 	int	tex_idx;
 
 	tex_idx = 0;
-	g_running = 0;
-	pthread_join(r->counter_thread, NULL);
+	r->is_running = 0;
+	if (r->counter_thread)
+		pthread_join(r->counter_thread, NULL);
+	if (r->render_thread)
+		pthread_join(r->render_thread, NULL);
 	while (tex_idx < TEX_COUNT)
 	{
 		if (r->textures[tex_idx]) {
@@ -534,7 +540,7 @@ void	player_hitbox(t_renderer *r)
 	ft_line(r, (t_point){ t0.x, t1.y }, (t_point){ t1.x, t0.y });
 }
 
-void	ft_image_to_vbuffer(t_renderer *r, int texture_index, int x, int y);
+void	ft_image_to_vbuffer(t_renderer *r, void *img, t_rect pos);
 
 void	ft_render_tile(t_renderer *r, int tx, int ty)
 {
@@ -545,7 +551,9 @@ void	ft_render_tile(t_renderer *r, int tx, int ty)
 	int mask = compute_texture_mask(tx, ty);
 	int tex_idx = get_texture_index(mask);
 	t_vector t = translate(r, tx * TILE_SIZE, ty * TILE_SIZE);
-	ft_image_to_vbuffer(r, tex_idx, t.x, t.y);
+	ft_image_to_vbuffer(r, r->textures[tex_idx], (t_rect){
+		t.x, t.y, TILE_SIZE, TILE_SIZE
+	});
 	if (g_debug_mode)
 		render_hitbox(r, tex_idx, tx, ty);
 }
@@ -586,7 +594,7 @@ void move_down(t_player *p, t_hitbox box) {
 	float prev_overlap = p->py + p->h - box.t;
 	if (prev_overlap <= 0 && overlap > 0 && horizontal_overlap(p, box)) {
 		p->vy = 0;
-		p->y = box.t - p->h - 0.01f;
+		p->y = box.t - p->h - COLLISION_OFFSET;
 	}
 }
 
@@ -595,7 +603,7 @@ void move_up(t_player *p, t_hitbox box) {
 	float prev_overlap = box.b - p->py;
 	if (prev_overlap <= 0 && overlap > 0 && horizontal_overlap(p, box)) {
 		p->vy = 0;
-		p->y = box.b + 0.01f;
+		p->y = box.b + COLLISION_OFFSET;
 	}
 }
 
@@ -604,7 +612,7 @@ void move_right(t_player *p, t_hitbox box) {
 	float prev_overlap = p->px + p->w - box.l;
 	if (prev_overlap <= 0 && overlap > 0 && vertical_overlap(p, box)) {
 		p->vx = 0;
-		p->x = box.l - p->w - 0.01f;
+		p->x = box.l - p->w - COLLISION_OFFSET;
 	}
 }
 void move_left(t_player *p, t_hitbox box) {
@@ -612,42 +620,20 @@ void move_left(t_player *p, t_hitbox box) {
 	float prev_overlap = box.r - p->px;
 	if (prev_overlap <= 0 && overlap > 0 && vertical_overlap(p, box)) {
 		p->vx = 0;
-		p->x = box.r + 0.01f;
+		p->x = box.r + COLLISION_OFFSET;
 	}
 }
 
-void ft_player_update(t_renderer *r) {
-	t_player	*p;
+void	ft_collision_x(t_player *p)
+{
 	t_hitbox	box;
+	int			y0 = p->y / TILE_SIZE;
+	int			y1 = (p->y + p->h) / TILE_SIZE;
 
-	player_update_tiles(r);
-	player_hitbox(r);
-	p = &r->player;
-	p->vx *= FRICTION;
-	p->vy += GRAVITY;
-	if (r->keys & KEY_LEFT)
-		p->vx = -VELOCITY;
-	else if (r->keys & KEY_RIGHT)
-		p->vx = VELOCITY;
-	if (r->should_dash) {
-		if (r->keys & KEY_LEFT)
-			p->vx = -VELOCITY * DASH_MULTIPLIER;
-		if (r->keys & KEY_RIGHT)
-			p->vx = VELOCITY * DASH_MULTIPLIER;
-		r->should_dash--;
-	}
-	float	new_x = p->x + p->vx;
-	float	new_y = p->y + p->vy;
-	p->px = p->x;
-	p->x = new_x;
-	int	x0 = p->x / TILE_SIZE;
-	int	y0 = p->y / TILE_SIZE;
-	int	x1 = (p->x + p->w) / TILE_SIZE;
-	int	y1 = (p->y + p->h) / TILE_SIZE;
 	if (p->vx > 0) {
 		for (int y = y0; y <= y1; y++) {
 			int	tx = (p->x + p->w) / TILE_SIZE;
-			if (is_solid(tx, y, &box))
+			if (is_solid(tx, y, &box) == 1)
 				move_right(p, box);
 		}
 	}
@@ -658,12 +644,13 @@ void ft_player_update(t_renderer *r) {
 				move_left(p, box);
 		}
 	}
-	p->py = p->y;
-	p->y = new_y;
-	x0 = p->x / TILE_SIZE;
-	y0 = p->y / TILE_SIZE;
-	x1 = (p->x + p->w) / TILE_SIZE;
-	y1 = (p->y + p->h) / TILE_SIZE;
+}
+
+void	ft_collision_y(t_player *p)
+{
+	t_hitbox	box;
+	int x0 = p->x / TILE_SIZE;
+	int x1 = (p->x + p->w) / TILE_SIZE;
 	if (p->vy > 0) {
 		for (int x = x0; x <= x1; x++) {
 			int	ty = (p->y + p->h) / TILE_SIZE;
@@ -680,92 +667,115 @@ void ft_player_update(t_renderer *r) {
 	}
 }
 
-void	ft_image_to_vbuffer(t_renderer *r, int tex_idx, int x, int y)
+void	ft_player_update(t_renderer *r)
+{
+	t_player	*p;
+
+	player_update_tiles(r);
+	player_hitbox(r);
+	p = &r->player;
+	p->vx *= FRICTION;
+	p->vy += GRAVITY;
+	if (r->keys & KEY_LEFT)
+		p->vx = -VELOCITY;
+	else if (r->keys & KEY_RIGHT)
+		p->vx = VELOCITY;
+	if (r->should_dash) {
+		if (r->keys & KEY_LEFT)
+			p->vx = -VELOCITY * DASH_MULTIPLIER;
+		else if (r->keys & KEY_RIGHT)
+			p->vx = VELOCITY * DASH_MULTIPLIER;
+		r->should_dash--;
+	}
+	p->px = p->x;
+	p->x += p->vx;
+	ft_collision_x(p);
+	p->py = p->y;
+	p->y += p->vy;
+	ft_collision_y(p);
+}
+
+void	ft_image_to_vbuffer(t_renderer *r, void *img, t_rect p)
 {
 	int	_;
-
 	void	*bg = mlx_get_data_addr(r->frame, &_, &_, &_);
-	void	*fg = mlx_get_data_addr(r->textures[tex_idx], &_, &_, &_);
+	void	*fg = mlx_get_data_addr(img, &_, &_, &_);
 
-	for (int j = 0; j < TILE_SIZE; j++) {
-		if (y + j > r->window.h) continue;
-		if (y + j < 0) continue ;
-		for (int i = 0; i < TILE_SIZE; i++) {
-			int fg_idx = j * TILE_SIZE + i;
-			int bg_idx = ((y + j) * r->window.w) + (x + i);
+	int x0 = (p.x < 0) ? -p.x : 0;
+	int x1 = (p.x + p.w > r->window.w) ? r->window.w - p.x : p.w;
+	int y0 = (p.y < 0) ? -p.y : 0;
+	int y1 = (p.y + p.h > r->window.h) ? r->window.h - p.y : p.h;
 
-			if (x + i > r->window.w) continue;
-			if (x + i < 0) continue ;
+	uint32_t *fg_ptr = (uint32_t *)fg + (y0 * p.w) + x0;
+	uint32_t *bg_ptr = (uint32_t *)bg + ((p.y + y0) * r->window.w) + (p.x + x0);
 
-			uint32_t fg_px = ((uint32_t *)fg)[fg_idx];
-			uint32_t bg_px = ((uint32_t *)bg)[bg_idx];
+	for (int j = y0; j < y1; j++) {
+		uint32_t *fg_row = fg_ptr;
+		uint32_t *bg_row = bg_ptr;
 
-			if (tex_idx != TEX_PLAYER)
-				((uint32_t *)bg)[bg_idx] = blend_pixel(fg_px, BG_COLOR);
-			else
-				((uint32_t *)bg)[bg_idx] = blend_pixel(fg_px, bg_px);
+		for (int i = x0; i < x1; i++) {
+			uint32_t fg_px = *fg_row++;
+			uint32_t bg_px = *bg_row;
+
+			*bg_row = blend_pixel_fast(fg_px, bg_px);
+			bg_row++;
 		}
+
+		fg_ptr += p.w;
+		bg_ptr += r->window.w;
 	}
 }
 
 void	ft_camera_update(t_renderer *r)
 {
-	int had_change = 0;
 	int x_margin = 0;
 	int y_margin = 0;
 	if (r->player.x - x_margin > r->window.x + r->window.w / 2.
-		&& r->window.x + r->window.w < r->map.w) {
+		&& r->window.x + r->window.w < r->map.w)
 		r->window.x = r->player.x - r->window.w / 2. - x_margin;
-		had_change = 1;
-	} else if (r->player.x + x_margin < r->window.x + r->window.w / 2.
-		&& r->window.x > 0) {
+	else if (r->player.x + x_margin < r->window.x + r->window.w / 2.
+		&& r->window.x > 0)
 		r->window.x = r->player.x - r->window.w / 2. + x_margin;
-		had_change = 1;
-	}
 	if (r->player.y - y_margin > r->window.y + r->window.h / 2.
-		&& r->window.y + r->window.h < r->map.h) {
+		&& r->window.y + r->window.h < r->map.h)
 		r->window.y = r->player.y - r->window.h / 2. - y_margin;
-		had_change = 1;
-	} else if (r->player.y + y_margin < r->window.y + r->window.h / 2.
-		&& r->window.y > 0) {
+	else if (r->player.y + y_margin < r->window.y + r->window.h / 2.
+		&& r->window.y > 0)
 		r->window.y = r->player.y - r->window.h / 2. + y_margin;
-		had_change = 1;
-	}
-	if (had_change)
-	{
-		ft_generate_background(r);
-		ft_generate_map(r);
-		render_hitboxes(r);
-	}
 }
 
 int	render(t_renderer *r)
 {
-	if (!g_should_render)
+	if (!r->should_render)
 		return (0);
-	g_frame_count++;
-	g_should_render = 0;
+	r->frame_count++;
+	r->should_render = 0;
 	ft_player_update(r);
 	ft_camera_update(r);
+	ft_generate_background(r);
+	ft_generate_map(r);
+	t_rect p = {
+		-r->window.x * PARALLAX_CONSTANT,
+		-r->window.y * PARALLAX_CONSTANT,
+		MAP_WIDTH * TILE_SIZE * PARALLAX_CONSTANT,
+		MAP_HEIGHT * TILE_SIZE * PARALLAX_CONSTANT
+	};
+	ft_image_to_vbuffer(r, r->parallaxes[0], p);
+	render_hitboxes(r);
 	t_vector t = translate(r,
 		r->player.x - .5 * (TILE_SIZE - r->player.w),
 		r->player.y - .5 * (TILE_SIZE - r->player.h));
-	ft_image_to_vbuffer(r, TEX_PLAYER, t.x, t.y);
+	ft_image_to_vbuffer(r, r->textures[TEX_PLAYER], (t_rect){
+		t.x, t.y, TILE_SIZE, TILE_SIZE
+	});
 	mlx_put_image_to_window(r->mlx, r->win, r->frame, 0, 0);
-	if (g_debug_mode)
-	{
-		char buffer[24];
-		ft_snprintf(buffer, 24, "%i FPS", g_fps);
-		mlx_string_put(r->mlx, r->win, 10, 20, DEBUG_COLOR, buffer);
-	}
 	return (0);
 }
 
 int	ft_register_hooks(t_renderer *r)
 {
-	mlx_hook(r->win, KeyPress, KeyPressMask,	on_key_press, r);
-	mlx_hook(r->win, KeyRelease, KeyReleaseMask,	on_key_release,
-		r);
+	mlx_hook(r->win, KeyPress, KeyPressMask, on_key_press, r);
+	mlx_hook(r->win, KeyRelease, KeyReleaseMask, on_key_release, r);
 	mlx_hook(r->win, DestroyNotify, 0, on_destroy, r);
 	mlx_loop_hook(r->mlx, render, r);
 	return (0);
@@ -786,7 +796,6 @@ int	ft_init_player(t_renderer *r)
 	return (0);
 }
 
-
 int	ft_generate_map(t_renderer *r)
 {
 	for (int j = 0; j < MAP_HEIGHT; j++) {
@@ -795,11 +804,15 @@ int	ft_generate_map(t_renderer *r)
 			if (map[j][i] == 'P' && r->player.x == 0 && r->player.y == 0)
 				set_player_position(r, i, j);
 			if (map[j][i] == 'E')
-				ft_image_to_vbuffer(r, TEX_EXIT, t.x, t.y);
+				ft_image_to_vbuffer(r, r->textures[TEX_EXIT], (t_rect){
+					t.x, t.y, TILE_SIZE, TILE_SIZE
+				});
 			if (!is_wall(i, j)) continue ;
 			int mask = compute_texture_mask(i, j);
 			int tex_idx = get_texture_index(mask);
-			ft_image_to_vbuffer(r, tex_idx, t.x, t.y);
+			ft_image_to_vbuffer(r, r->textures[tex_idx], (t_rect){
+				t.x, t.y, TILE_SIZE, TILE_SIZE
+			});
 		}
 	}
 	return (0);
@@ -817,6 +830,40 @@ int	ft_generate_background(t_renderer *r)
 void	ft_debug(char *info)
 {
 	ft_printf("\e[95m[DBG]\e[m %s\n", info);
+}
+
+int	ft_init_parallax(t_renderer *r)
+{
+	float parallax = 1;
+	int _;
+	for (int k = 0; k < PARALLAX_LAYERS; k++)
+	{
+		parallax *= PARALLAX_CONSTANT;
+		int width = MAP_WIDTH * TILE_SIZE * parallax;
+		int height = MAP_HEIGHT * TILE_SIZE * parallax;
+		printf("Trying to init %ix%i parallax\n", width, height);
+		r->parallaxes[k] = mlx_new_image(r->mlx, width, height);
+		if (!r->parallaxes[k])
+			return (1);
+		uint32_t *buf = (uint32_t *)mlx_get_data_addr(r->parallaxes[k], &_, &_, &_);
+		for (int j = 0; j < height; j++) {
+			for (int i = 0; i < width; i++) {
+				uint8_t r = 255. * i / width;
+				uint8_t g = 255. * j / width;
+				uint8_t b = 128.;
+				uint32_t color = (r << 16) | (g << 8) | b;
+				buf[j * width + i] = color;
+			}
+		}
+	}
+	return (0);
+}
+
+void	launch_threads(t_renderer *r)
+{
+	pthread_create(&r->counter_thread, NULL, (t_thread)counter_thread, r);
+	pthread_create(&r->render_thread, NULL, (t_thread)render_thread, r);
+	ft_debug("Launched threads");
 }
 
 int	ft_init_renderer(t_renderer *r)
@@ -852,24 +899,79 @@ int	ft_init_renderer(t_renderer *r)
 		return (1);
 	}
 	ft_debug("Generated background");
+	if (ft_init_parallax(r))
+	{
+		ft_printf("\e[91m[ERR]\e[m Failed to initialize parallax: %m\n");
+		return (1);
+	}
+	ft_debug("Initialized parallax");
 	if (ft_generate_map(r))
 	{
 		ft_printf("\x1b[91m[ERR]\x1b[m Failed to generate map\n");
 		return (1);
 	}
+	launch_threads(r);
 	ft_debug("Generated map");
 	ft_register_hooks(r);
 	ft_debug("Registered hooks");
 	return (0);
 }
 
+void generate_map(unsigned int seed)
+{
+    ft_printf("\e[95m[DBG]\e[m Seed %i\n", seed);
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            map[y][x] = '1';
+        }
+    }
+
+    int player_x = MAP_WIDTH / 2;
+    int player_y = MAP_HEIGHT / 2;
+
+    map[player_y][player_x] = 'P';
+
+    for (int i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
+        int dir = ft_rand(seed) % 4;
+        switch (dir) {
+            case 0: if (player_x > 1) player_x--; break;
+            case 1: if (player_x < MAP_WIDTH - 2) player_x++; break;
+            case 2: if (player_y > 1) player_y--; break;
+            case 3: if (player_y < MAP_HEIGHT - 2) player_y++; break;
+        }
+        if (map[player_y][player_x] == '1')
+            map[player_y][player_x] = '0';
+    }
+
+    for (int y = 0; y < MAP_HEIGHT - 1; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            if (map[y][x] == '0' && map[y + 1][x] == '1') {
+                if (ft_rand(seed) % 5 == 0) {
+                    map[y][x] = 'C';
+                }
+            }
+        }
+    }
+}
+
+void print_map() {
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+			printf("%c", map[y][x]);
+        }
+        printf("\n");
+    }
+}
+
 int	main(void)
 {
 	t_renderer	r;
+
 	ft_memset(&r, 0, sizeof(t_renderer));
-	
 	ft_printf("\e[94m[INF]\e[m Starting game\n");
-	pthread_create(&r.counter_thread, NULL, counter_thread, NULL);
+	r.is_running = 1;
+	generate_map(ft_time(NULL));
+	print_map();
 	if (ft_init_renderer(&r))
 	{
 		cleanup(&r);

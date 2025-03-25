@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:13:32 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/23 11:39:59 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/23 17:32:29 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,21 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_DIAG_TLBR] = "assets/diag-tlbr.xpm",
 [TEX_DIAG_TRBL] = "assets/diag-trbl.xpm",
 [TEX_PLAYER] = "assets/player.xpm",
-[TEX_EXIT] = "assets/exit.xpm"
+[TEX_EXIT] = "assets/exit.xpm",
+[TEX_LOADING_0] = "assets/loading_00.xpm",
+[TEX_LOADING_1] = "assets/loading_01.xpm",
+[TEX_LOADING_2] = "assets/loading_02.xpm",
+[TEX_LOADING_3] = "assets/loading_03.xpm",
+[TEX_LOADING_4] = "assets/loading_04.xpm",
+[TEX_LOADING_5] = "assets/loading_05.xpm",
+[TEX_LOADING_6] = "assets/loading_06.xpm",
+[TEX_LOADING_7] = "assets/loading_07.xpm",
+[TEX_LOADING_8] = "assets/loading_08.xpm",
+[TEX_LOADING_9] = "assets/loading_09.xpm",
+[TEX_LOADING_10] = "assets/loading_10.xpm",
+[TEX_LOADING_11] = "assets/loading_11.xpm",
+[TEX_LOADING_12] = "assets/loading_12.xpm",
+[TEX_LOADING_13] = "assets/loading_13.xpm",
 };
 
 static int	ft_load_texture(t_renderer *renderer, char *name, int index)
@@ -85,7 +99,7 @@ static int	ft_load_texture(t_renderer *renderer, char *name, int index)
 	}
 	if (width != TILE_SIZE || height != TILE_SIZE)
 	{
-		ft_printf("\e[92m[WRN]\e[m Texture size mismatch \'%s\'\n: %ix%i",
+		ft_printf("\e[93m[WRN]\e[m Texture size mismatch \'%s\': %ix%i\n",
 			name, width, height);
 	}
 	renderer->textures[index] = image;

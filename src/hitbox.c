@@ -6,12 +6,13 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/21 22:20:12 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/23 13:19:51 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/24 22:32:12 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "so_long.h"
 #include "mlx.h"
+#include <time.h>
 
 t_hitbox g_hitboxes[TEX_COUNT] = {
 [TEX_EMPTY] = { 0, 0, 64, 64 },
@@ -19,10 +20,10 @@ t_hitbox g_hitboxes[TEX_COUNT] = {
 [TEX_WALL_BOTTOM] = { 0, 16, 64, 64 },
 [TEX_WALL_LEFT] = { 0, 0, 48, 64 },
 [TEX_WALL_RIGHT] = { 16, 0, 64, 64 },
-[TEX_CORNER_TL] = { 16, 16, 64, 64 },
-[TEX_CORNER_TR] = { 0, 16, 48, 64 },
-[TEX_CORNER_BL] = { 16, 0, 48, 64 },
-[TEX_CORNER_BR] = { 0, 0, 48, 48 },
+[TEX_CORNER_TL] = { 0, 16, 64, 64 },
+[TEX_CORNER_TR] = { 0, 16, 64, 64 },
+[TEX_CORNER_BL] = { 0, 0, 64, 48 },
+[TEX_CORNER_BR] = { 0, 0, 64, 48 },
 [TEX_CORNER_EXT_TL] = { 16, 16, 64, 64 },
 [TEX_CORNER_EXT_TR] = { 0, 16, 48, 64 },
 [TEX_CORNER_EXT_BL] = { 16, 0, 64, 48 },
@@ -32,10 +33,10 @@ t_hitbox g_hitboxes[TEX_COUNT] = {
 [TEX_CORNER_TJUNC_L] = { 16, 0, 64, 64 },
 [TEX_CORNER_TJUNC_R] = { 0, 0, 48, 64 },
 [TEX_JUNC_CROSS] = { 16, 16, 48, 48 },
-[TEX_TJUNC_T] = { 0, 0, 64, 64 },
-[TEX_TJUNC_B] = { 0, 0, 64, 64 },
-[TEX_TJUNC_L] = { 0, 0, 64, 64 },
-[TEX_TJUNC_R] = { 0, 0, 64, 64 },
+[TEX_TJUNC_T] = { 0, 16, 64, 48 },
+[TEX_TJUNC_B] = { 0, 16, 64, 48 },
+[TEX_TJUNC_L] = { 16, 0, 48, 64 },
+[TEX_TJUNC_R] = { 16, 0, 48, 64 },
 [TEX_LJUNC_TL] = { 0, 16, 48, 48 },
 [TEX_LJUNC_TR] = { 16, 16, 64, 48 },
 [TEX_LJUNC_BL] = { 0, 16, 48, 48 },
@@ -47,20 +48,20 @@ t_hitbox g_hitboxes[TEX_COUNT] = {
 [TEX_PLATFORM_R] = { 48, 16, 64, 48 },
 [TEX_PLATFORM_H] = { 0, 16, 64, 48 },
 [TEX_PLATFORM_V] = { 16, 0, 48, 64 },
-[TEX_HLJUNC_TL] = { 16, 16, 64, 48 },
-[TEX_HLJUNC_TR] = { 0, 0, 64, 64 },
-[TEX_HLJUNC_BL] = { 0, 0, 64, 64 },
-[TEX_HLJUNC_BR] = { 0, 0, 64, 64 },
-[TEX_VLJUNC_TL] = { 0, 0, 64, 64 },
+[TEX_HLJUNC_TL] = { 0, 16, 64, 48 },
+[TEX_HLJUNC_TR] = { 0, 16, 64, 48 },
+[TEX_HLJUNC_BL] = { 0, 16, 64, 48 },
+[TEX_HLJUNC_BR] = { 0, 16, 64, 48 },
+[TEX_VLJUNC_TL] = { 0, 16, 48, 64 },
 [TEX_VLJUNC_TR] = { 16, 0, 48, 64 },
-[TEX_VLJUNC_BL] = { 0, 0, 64, 64 },
-[TEX_VLJUNC_BR] = { 0, 0, 64, 64 },
-[TEX_CORNERS_XTL] = { 0, 0, 64, 64 },
-[TEX_CORNERS_XTR] = { 0, 0, 64, 64 },
-[TEX_CORNERS_XBL] = { 0, 0, 64, 64 },
-[TEX_CORNERS_XBR] = { 0, 0, 64, 64 },
-[TEX_DIAG_TLBR] = { 0, 0, 64, 64 },
-[TEX_DIAG_TRBL] = { 0, 0, 64, 64 },
+[TEX_VLJUNC_BL] = { 0, 0, 48, 48 },
+[TEX_VLJUNC_BR] = { 16, 0, 64, 48 },
+[TEX_CORNERS_XTL] = { 0, 16, 64, 48 },
+[TEX_CORNERS_XTR] = { 0, 16, 64, 48 },
+[TEX_CORNERS_XBL] = { 0, 16, 48, 64 },
+[TEX_CORNERS_XBR] = { 16, 16, 64, 64 },
+[TEX_DIAG_TLBR] = { 0, 16, 64, 48 },
+[TEX_DIAG_TRBL] = { 0, 16, 64, 48 },
 [TEX_PLAYER] = { 0, 0, 64, 64 },
 [TEX_EXIT] = { 0, 0, 64, 64},
 };
@@ -142,3 +143,4 @@ void	render_hitbox(t_renderer *renderer, int index, int tx, int ty)
 	ft_line(renderer, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t1.y });
 	ft_line(renderer, (t_point){ t0.x, t1.y }, (t_point){ t1.x, t0.y });
 }
+

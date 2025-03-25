@@ -6,14 +6,15 @@
 #    By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/13 20:22:30 by smamalig          #+#    #+#              #
-#    Updated: 2025/03/23 00:59:44 by smamalig         ###   ########.fr        #
+#    Updated: 2025/03/24 16:55:22 by smamalig         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME           = so_long
 CC             = cc
-CFLAGS         = -Wall -Wextra -Werror -g3
-SRCS           = src/main.c src/textures.c src/hitbox.c
+CFLAGS         = -Wall -Wextra -Werror -O3
+SRC_FILES      = main.c textures.c hitbox.c threads.c
+SRCS           = $(addprefix src/, $(SRC_FILES))
 OBJ_DIR        = obj
 OBJS           = $(patsubst src/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 INCLUDES       = -Iinclude -Ilibft/include -Ilibmlx -Ilibft_gl/include
