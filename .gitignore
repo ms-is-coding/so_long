@@ -1,5 +1,6 @@
 .cache/
 compile_commands.json
+seeds.txt
 
 # Prerequisites
 *.d
@@ -32,6 +33,7 @@ compile_commands.json
 *.dylib
 
 # Executables
+so_long
 *.exe
 *.out
 *.app

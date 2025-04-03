@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/03 11:01:53 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/03 22:20:03 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,6 @@
 
 #include <X11/keysym.h>
 #include <X11/X.h>
-#include <math.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <time.h>
@@ -647,10 +646,9 @@ void	ft_player_update(t_renderer *r)
 	else if (r->keys & KEY_RIGHT)
 		p->vx = VELOCITY;
 	if (r->should_dash) {
-		if (r->keys & KEY_LEFT)
-			p->vx = -VELOCITY * DASH_MULTIPLIER;
-		else if (r->keys & KEY_RIGHT)
-			p->vx = VELOCITY * DASH_MULTIPLIER;
+		// p->vx *= DASH_MULTIPLIER;
+		if (r->keys & KEY_LEFT || r->keys & KEY_RIGHT)
+			p->vx *= DASH_MULTIPLIER;
 		r->should_dash--;
 	}
 	p->px = p->x;
