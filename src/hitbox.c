@@ -6,13 +6,12 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/21 22:20:12 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/24 22:32:12 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/30 15:05:48 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "so_long.h"
 #include "mlx.h"
-#include <time.h>
 
 t_hitbox g_hitboxes[TEX_COUNT] = {
 [TEX_EMPTY] = { 0, 0, 64, 64 },
@@ -143,4 +142,3 @@ void	render_hitbox(t_renderer *renderer, int index, int tx, int ty)
 	ft_line(renderer, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t1.y });
 	ft_line(renderer, (t_point){ t0.x, t1.y }, (t_point){ t1.x, t0.y });
 }
-

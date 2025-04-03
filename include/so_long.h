@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/24 21:04:08 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/03 11:12:55 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 # include <pthread.h>
 # include <stdatomic.h>
 # include <stdbool.h>
-#include <stdint.h>
+// # include <stdint.h>
 
 # define KEY_LEFT 1
 # define KEY_RIGHT 2
@@ -37,8 +37,15 @@
 # define FRAMES_PER_SECOND 60
 # define PARALLAX_LAYERS 1
 # define PARALLAX_CONSTANT 0.8
-# define MAP_WIDTH 32
-# define MAP_HEIGHT 32
+
+// can be modified at compile-time
+# ifndef MAP_WIDTH
+#  define MAP_WIDTH 32
+# endif
+# ifndef MAP_HEIGHT
+#  define MAP_HEIGHT 32
+# endif
+
 # define TILE_SIZE 64
 # define WINDOW_W 1200
 # define WINDOW_H 800
@@ -148,6 +155,7 @@ enum
 	TEX_LOADING_11,
 	TEX_LOADING_12,
 	TEX_LOADING_13,
+	TEX_COLLECTIBLE,
 	TEX_COUNT
 };
 
@@ -187,7 +195,5 @@ typedef void	*(*t_thread)(void *);
 
 void		*counter_thread(t_renderer *r);
 void		*render_thread(t_renderer *r);
-
-int	ft_rand(unsigned int seed);
 
 #endif

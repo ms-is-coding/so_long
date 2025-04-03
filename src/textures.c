@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:13:32 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/23 17:32:29 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/03/27 18:07:14 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,6 +78,7 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_LOADING_11] = "assets/loading_11.xpm",
 [TEX_LOADING_12] = "assets/loading_12.xpm",
 [TEX_LOADING_13] = "assets/loading_13.xpm",
+[TEX_COLLECTIBLE] = "assets/collectible.xpm",
 };
 
 static int	ft_load_texture(t_renderer *renderer, char *name, int index)

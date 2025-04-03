@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/03/24 23:01:25 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/03 11:01:53 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,46 +17,14 @@
 
 #include <X11/keysym.h>
 #include <X11/X.h>
+#include <math.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <time.h>
 
 int	g_debug_mode = 0;
 
-static char map[MAP_HEIGHT][MAP_WIDTH] = {
-	"11111111111111111111111111111111",
-	"1P000000000000000000000000000001",
-	"11111101111111111111111111111101",
-	"10000000000000000000000000000001",
-	"10111111011111111111111111111111",
-	"10000000000000000000000000000001",
-	"11111111111011111111111111111101",
-	"10000000000000000000000000000001",
-	"10111111111111011111111111111111",
-	"10000000000000000000000000000001",
-	"11111111111111111011111111111101",
-	"10000000000000000000000000000001",
-	"10111111111111111110111111111111",
-	"10000000000000000000000000000001",
-	"11111111111111111111101111111101",
-	"10000000000000000000000000000001",
-	"10111111111111111111111011111111",
-	"10000000000000000000000000000001",
-	"11111111111111111111111110111101",
-	"10000000000000000000000000000001",
-	"10111111111111111111111111101111",
-	"10000000000000000000000000000001",
-	"11111111111111111111111110111101",
-	"10000000000000000000000000000001",
-	"10111111111111111111111011111111",
-	"10000000000000000000000000000001",
-	"11111111111111111111101111111101",
-	"10000000000000000000000000000001",
-	"10111111111111111110111111111111",
-	"10000000000000000000000000000001",
-	"10000000000000000000000000000001",
-	"11111111111111111111111111111111",
-};
+static char map[MAP_HEIGHT][MAP_WIDTH] = {};
 
 static char texture_index_lookup[0x100] = {
 [0x00] = TEX_PLATFORM,
@@ -177,7 +145,6 @@ static char texture_index_lookup[0x100] = {
 [0x6d] = TEX_LJUNC_BL,
 [0x6e] = TEX_CORNER_EXT_TR,
 [0x6f] = TEX_CORNER_EXT_TR,
-
 
 [0x70] = TEX_TJUNC_B,
 [0x71] = TEX_HLJUNC_BL,
@@ -437,7 +404,6 @@ int	on_key_press(int keysym, t_renderer *r)
 {
 	if (keysym == XK_Escape)
 		return (on_destroy(r));
-
 	if (keysym == XK_w || keysym == XK_Up || keysym == XK_space)
 	{
 		r->player.vy -= JUMP_FORCE;
@@ -726,22 +692,34 @@ void	ft_image_to_vbuffer(t_renderer *r, void *img, t_rect p)
 	}
 }
 
+void	ft_camera_calibrate(t_renderer *r)
+{
+	if (r->window.x < 0)
+		r->window.x = 0;
+	if (r->window.y < 0)
+		r->window.y = 0;
+	if (r->window.x > r->map.w - r->window.w)
+		r->window.x = r->map.w - r->window.w;
+	if (r->window.y > r->map.h - r->window.h)
+		r->window.y = r->map.h - r->window.h;
+}
+
 void	ft_camera_update(t_renderer *r)
 {
-	int x_margin = 0;
-	int y_margin = 0;
-	if (r->player.x - x_margin > r->window.x + r->window.w / 2.
+	const int	x_offset = r->player.x - r->window.w / 2.;
+	const int	y_offset = r->player.y - r->window.h / 2.;
+
+	if (r->player.x > r->window.x + r->window.w / 2.
 		&& r->window.x + r->window.w < r->map.w)
-		r->window.x = r->player.x - r->window.w / 2. - x_margin;
-	else if (r->player.x + x_margin < r->window.x + r->window.w / 2.
+		r->window.x = x_offset;
+	else if (r->player.x < r->window.x + r->window.w / 2.
 		&& r->window.x > 0)
-		r->window.x = r->player.x - r->window.w / 2. + x_margin;
-	if (r->player.y - y_margin > r->window.y + r->window.h / 2.
-		&& r->window.y + r->window.h < r->map.h)
-		r->window.y = r->player.y - r->window.h / 2. - y_margin;
-	else if (r->player.y + y_margin < r->window.y + r->window.h / 2.
-		&& r->window.y > 0)
-		r->window.y = r->player.y - r->window.h / 2. + y_margin;
+		r->window.x = x_offset;
+	if (r->player.y > r->window.y + r->window.h / 2.)
+		r->window.y = y_offset;
+	else if (r->player.y < r->window.y + r->window.h / 2.)
+		r->window.y = y_offset;
+	ft_camera_calibrate(r);
 }
 
 int	render(t_renderer *r)
@@ -752,13 +730,13 @@ int	render(t_renderer *r)
 	r->should_render = 0;
 	ft_player_update(r);
 	ft_camera_update(r);
-	ft_generate_background(r);
+	// ft_generate_background(r);
 	ft_generate_map(r);
 	t_rect p = {
 		-r->window.x * PARALLAX_CONSTANT,
 		-r->window.y * PARALLAX_CONSTANT,
-		MAP_WIDTH * TILE_SIZE * PARALLAX_CONSTANT,
-		MAP_HEIGHT * TILE_SIZE * PARALLAX_CONSTANT
+		r->map.w * PARALLAX_CONSTANT + r->window.w / 2.,
+		r->map.h * PARALLAX_CONSTANT + r->window.h / 2.,
 	};
 	ft_image_to_vbuffer(r, r->parallaxes[0], p);
 	render_hitboxes(r);
@@ -805,8 +783,10 @@ int	ft_generate_map(t_renderer *r)
 				set_player_position(r, i, j);
 			if (map[j][i] == 'E')
 				ft_image_to_vbuffer(r, r->textures[TEX_EXIT], (t_rect){
-					t.x, t.y, TILE_SIZE, TILE_SIZE
-				});
+					t.x, t.y, TILE_SIZE, TILE_SIZE });
+			if (map[j][i] == 'C')
+				ft_image_to_vbuffer(r, r->textures[TEX_COLLECTIBLE], (t_rect){
+					t.x + 16, t.y + 32, 32, 32 });
 			if (!is_wall(i, j)) continue ;
 			int mask = compute_texture_mask(i, j);
 			int tex_idx = get_texture_index(mask);
@@ -839,8 +819,8 @@ int	ft_init_parallax(t_renderer *r)
 	for (int k = 0; k < PARALLAX_LAYERS; k++)
 	{
 		parallax *= PARALLAX_CONSTANT;
-		int width = MAP_WIDTH * TILE_SIZE * parallax;
-		int height = MAP_HEIGHT * TILE_SIZE * parallax;
+		int width = MAP_WIDTH * TILE_SIZE * parallax + r->window.w / 2.;
+		int height = MAP_HEIGHT * TILE_SIZE * parallax + r->window.h / 2.;
 		printf("Trying to init %ix%i parallax\n", width, height);
 		r->parallaxes[k] = mlx_new_image(r->mlx, width, height);
 		if (!r->parallaxes[k])
@@ -963,15 +943,25 @@ void print_map() {
     }
 }
 
-int	main(void)
+#include <errno.h>
+
+int	main(int argc, char *argv[])
 {
 	t_renderer	r;
+	int			seed;
 
+	seed = ft_time(NULL);
+	if (argc == 2)
+		seed = ft_atoi_safe(argv[1]);
+	if (errno != 0)
+	{
+		ft_printf("\e[91m[ERR]\e[m Invalid seed\n");
+		return (1);
+	}
 	ft_memset(&r, 0, sizeof(t_renderer));
 	ft_printf("\e[94m[INF]\e[m Starting game\n");
 	r.is_running = 1;
-	generate_map(ft_time(NULL));
-	print_map();
+	generate_map(seed);
 	if (ft_init_renderer(&r))
 	{
 		cleanup(&r);

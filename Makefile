@@ -6,7 +6,7 @@
 #    By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/13 20:22:30 by smamalig          #+#    #+#              #
-#    Updated: 2025/03/24 16:55:22 by smamalig         ###   ########.fr        #
+#    Updated: 2025/04/03 11:08:02 by smamalig         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -30,28 +30,27 @@ LIBMLX_DIR     = ./libmlx
 
 LDFLAGS        = $(LIBFT_FLAGS) $(LIBMLX_FLAGS)
 
-# Colors
-RED            = \033[0;31m
-GREEN          = \033[0;32m
-YELLOW         = \033[0;33m
-BLUE           = \033[0;34m
-MAGENTA        = \033[0;35m
-CYAN           = \033[0;36m
-RESET          = \033[0m
+RED            = \e[31m
+GREEN          = \e[32m
+YELLOW         = \e[33m
+BLUE           = \e[34m
+MAGENTA        = \e[35m
+CYAN           = \e[36m
+RESET          = \e[m
 
 all: $(NAME)
 
 bonus: all
 
 $(NAME): $(LIBFT) $(LIBMLX) $(OBJS)
-	@printf "$(BLUE)%12s$(RESET): $(YELLOW)Building $(NAME)...$(RESET)\n" $(NAME)
-	@$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(NAME)
-	@printf "$(BLUE)%12s$(RESET): $(GREEN)Successfully built $(NAME)$(RESET)\n" $(NAME)
+	@printf "$(BLUE)%s$(RESET): $(YELLOW)Building $(NAME)...$(RESET)\n" $(NAME)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(NAME)
+	@printf "$(BLUE)%s$(RESET): $(GREEN)Successfully built $(NAME)$(RESET)\n" $(NAME)
 
 $(OBJ_DIR)/%.o: src/%.c $(HEADERS)
 	@mkdir -p $(dir $@)
-	@printf "$(BLUE)%12s$(RESET): $(MAGENTA)Compiling$(RESET) $<\n" $(NAME)
-	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	@printf "$(BLUE)%s$(RESET): $(MAGENTA)Compiling$(RESET) $<\n" $(NAME)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(LIBFT):
 	@make -C $(LIBFT_DIR) --no-print-directory
@@ -60,16 +59,16 @@ $(LIBMLX):
 	@make -C $(LIBMLX_DIR) --no-print-directory
 
 clean:
-	@printf "$(BLUE)%12s$(RESET): $(RED)Cleaning object files...$(RESET)\n" $(NAME)
+	@printf "$(BLUE)%s$(RESET): $(RED)Cleaning object files...$(RESET)\n" $(NAME)
 	@rm -rf obj
 	@make -C $(LIBFT_DIR) clean --no-print-directory
 	@make -C $(LIBMLX_DIR) clean --no-print-directory
 
 fclean: clean
-	@printf "$(BLUE)%12s$(RESET): $(RED)Full clean...$(RESET)\n" $(NAME)
+	@printf "$(BLUE)%s$(RESET): $(RED)Full clean...$(RESET)\n" $(NAME)
 	@rm -f $(NAME)
 	@make -C $(LIBFT_DIR) fclean --no-print-directory
 
 re: fclean all
 
-.PHONY: all clean fclean re libft bonus $(LIBFT) $(LIBFT_GL) $(LIBMLX)
+.PHONY: all clean fclean re libft bonus $(LIBFT) $(LIBMLX)
