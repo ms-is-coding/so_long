@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/03 18:40:44 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/06 19:41:22 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,33 +18,14 @@
 # include <pthread.h>
 # include <stdatomic.h>
 # include <stdbool.h>
-// # include <stdint.h>
 
 # define KEY_LEFT 1
 # define KEY_RIGHT 2
 
-# define BG_COLOR 0x8080ff
 # define DEBUG_COLOR 0xff0000
 
-# define VELOCITY 3
-# define GRAVITY 0.2
-# define FRICTION 0.9
-# define JUMP_FORCE 5.8
-# define DASH_MULTIPLIER 3.5
-# define DASH_FRAMES 10
-# define COLLISION_OFFSET 0
-
-# define FRAMES_PER_SECOND 60
 # define PARALLAX_LAYERS 1
 # define PARALLAX_CONSTANT 0.8
-
-// can be modified at compile-time
-# ifndef MAP_WIDTH
-#  define MAP_WIDTH 32
-# endif
-# ifndef MAP_HEIGHT
-#  define MAP_HEIGHT 32
-# endif
 
 # define TILE_SIZE 64
 # define WINDOW_W 1200
@@ -77,18 +58,6 @@ typedef struct s_hitbox
 	int	r;
 	int	b;
 }	t_hitbox;
-
-typedef struct s_player
-{
-	float	px;
-	float	py;
-	float	x;
-	float	y;
-	float	vx;
-	float	vy;
-	int		w;
-	int		h;
-}	t_player;
 
 enum
 {
@@ -159,41 +128,72 @@ enum
 	TEX_COUNT
 };
 
-typedef struct s_renderer
+typedef struct s_game
 {
 	void		*mlx;
 	void		*win;
 	void		*frame;
 	void		*parallaxes[PARALLAX_LAYERS];
 	void		*textures[TEX_COUNT];
-	pthread_t	counter_thread;
-	pthread_t	render_thread;
-	t_player	player;
+	struct s_player
+	{
+		float	px;
+		float	py;
+		float	x;
+		float	y;
+		float	vx;
+		float	vy;
+		int		w;
+		int		h;
+	}	player;
+	struct		s_threads
+	{
+		pthread_t	counter;
+		pthread_t	render;
+	}	threads;
+	struct		s_options
+	{
+		float	velocity;
+		float	gravity;
+		float	friction;
+		float	jump_force;
+		float	dash_multiplier;
+		float	dash_frames;
+		float	collision_offset;
+		float	fps;
+		int		map_width;
+		int		map_height;
+	}	opt;
+	struct	s_state
+	{
+		int			should_dash;
+		int			keys;
+		atomic_int	is_running;
+		atomic_int	frame_count;
+		atomic_int	should_render;
+	}	state;
 	t_rect		window;
 	t_rect		map;
-	int			should_dash;
-	int			keys;
-	atomic_int	is_running;
-	atomic_int	frame_count;
-	atomic_int	should_render;
-}	t_renderer;
+	char		**map_matrix;
+}	t_game;
 
-int			ft_generate_map(t_renderer *r);
-int			ft_generate_background(t_renderer *r);
-int			ft_load_textures(t_renderer *r);
-t_hitbox	ft_absolute_hitbox(int x, int y);
+int			ft_render_map(t_game *r);
+int			ft_generate_background(t_game *r);
+int			ft_load_textures(t_game *r);
+t_hitbox	ft_absolute_hitbox(t_game *r, int x, int y);
 int			get_texture_index(int mask);
-int			compute_texture_mask(int x, int y);
-bool		is_wall(int x, int y);
-bool		is_solid(int x, int y, t_hitbox *box);
-void		render_hitbox(t_renderer *r, int tex_idx, int x, int y);
-void		ft_line(t_renderer *r, t_point p0, t_point p1);
-t_vector	translate(t_renderer *r, float x, float y);
-void		render_hitboxes(t_renderer *r);
+int			compute_texture_mask(t_game *r, int x, int y);
+bool		is_wall(t_game *r, int x, int y);
+bool		is_solid(t_game *r, int x, int y, t_hitbox *box);
+void		render_hitbox(t_game *r, int tex_idx, int x, int y);
+void		ft_line(t_game *r, t_point p0, t_point p1);
+t_vector	translate(t_game *r, float x, float y);
+void		render_hitboxes(t_game *r);
+void		options_init_default(struct s_options *opt);
 
 typedef void	*(*t_thread)(void *);
 
-void		*counter_thread(t_renderer *r);
-void		*render_thread(t_renderer *r);
+void		*counter_thread(t_game *r);
+void		*render_thread(t_game *r);
 
 #endif

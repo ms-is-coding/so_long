@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/03 22:20:03 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/06 23:37:53 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,13 +17,12 @@
 
 #include <X11/keysym.h>
 #include <X11/X.h>
+#include <signal.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <time.h>
 
 int	g_debug_mode = 0;
-
-static char map[MAP_HEIGHT][MAP_WIDTH] = {};
 
 static char texture_index_lookup[0x100] = {
 [0x00] = TEX_PLATFORM,
@@ -334,25 +333,25 @@ static inline uint32_t blend_pixel_fast(uint32_t fg, uint32_t bg) {
 	return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-bool is_wall(int tx, int ty)
+bool is_wall(t_game *g, int tx, int ty)
 {
-	return (tx < 0 || tx >= MAP_WIDTH || ty < 0
-		|| ty >= MAP_HEIGHT || map[ty][tx] == '1');
+	return (tx < 0 || tx >= g->opt.map_width || ty < 0
+		|| ty >= g->opt.map_height || g->map_matrix[ty][tx] == '1');
 }
 
-int	compute_texture_mask(int x, int y)
+int	compute_texture_mask(t_game *g, int x, int y)
 {
 	int	mask;
 
 	mask = 0;
-	mask |= is_wall(x, y - 1) << 7;
-	mask |= is_wall(x, y + 1) << 6;
-	mask |= is_wall(x - 1, y) << 5;
-	mask |= is_wall(x + 1, y) << 4;
-	mask |= is_wall(x - 1, y - 1) << 3;
-	mask |= is_wall(x + 1, y - 1) << 2;
-	mask |= is_wall(x - 1, y + 1) << 1;
-	mask |= is_wall(x + 1, y + 1) << 0;
+	mask |= is_wall(g, x, y - 1) << 7;
+	mask |= is_wall(g, x, y + 1) << 6;
+	mask |= is_wall(g, x - 1, y) << 5;
+	mask |= is_wall(g, x + 1, y) << 4;
+	mask |= is_wall(g, x - 1, y - 1) << 3;
+	mask |= is_wall(g, x + 1, y - 1) << 2;
+	mask |= is_wall(g, x - 1, y + 1) << 1;
+	mask |= is_wall(g, x + 1, y + 1) << 0;
 	return (mask);
 }
 
@@ -362,234 +361,176 @@ int	get_texture_index(int mask)
 }
 
 
-int	cleanup(t_renderer *r)
+int	cleanup(t_game *g)
 {
 	int	tex_idx;
 
 	tex_idx = 0;
-	r->is_running = 0;
-	if (r->counter_thread)
-		pthread_join(r->counter_thread, NULL);
-	if (r->render_thread)
-		pthread_join(r->render_thread, NULL);
+	g->state.is_running = 0;
+	if (g->threads.counter)
+		pthread_kill(g->threads.counter, 0);
+	if (g->threads.render)
+		pthread_kill(g->threads.render, 0);
 	while (tex_idx < TEX_COUNT)
 	{
-		if (r->textures[tex_idx]) {
-			mlx_destroy_image(r->mlx, r->textures[tex_idx]);
-			r->textures[tex_idx] = 0;
+		if (g->textures[tex_idx]) {
+			mlx_destroy_image(g->mlx, g->textures[tex_idx]);
+			g->textures[tex_idx] = 0;
 		}
 		tex_idx++;
 	}
-	if (r->frame)
-		mlx_destroy_image(r->mlx, r->frame);
-	if (r->win)
-		mlx_destroy_window(r->mlx, r->win);
-	if (r->mlx)
+	if (g->frame)
+		mlx_destroy_image(g->mlx, g->frame);
+	if (g->win)
+		mlx_destroy_window(g->mlx, g->win);
+	if (g->mlx)
 	{
-		mlx_destroy_display(r->mlx);
-		free(r->mlx);
+		mlx_destroy_display(g->mlx);
+		free(g->mlx);
 	}
 	return (0);
 }
 
-int	on_destroy(t_renderer *r)
+int	on_destroy(t_game *g)
 {
-	cleanup(r);
+	cleanup(g);
 	exit(0);
 	return (0);
 }
 
-int	on_key_press(int keysym, t_renderer *r)
+int	on_key_press(int keysym, t_game *g)
 {
 	if (keysym == XK_Escape)
-		return (on_destroy(r));
+		return (on_destroy(g));
 	if (keysym == XK_w || keysym == XK_Up || keysym == XK_space)
 	{
-		r->player.vy -= JUMP_FORCE;
+		g->player.vy = -g->opt.jump_force;
 	}
 	if (keysym == XK_g)
-	{
 		g_debug_mode ^= 1;
-		render_hitboxes(r);
-	}
 	if (keysym == XK_Shift_L || keysym == XK_Shift_R)
-		r->should_dash = DASH_FRAMES;
+		g->state.should_dash = g->opt.dash_frames;
 	if (keysym == XK_a || keysym == XK_Left)
-		r->keys |= KEY_LEFT;
+		g->state.keys |= KEY_LEFT;
 	if (keysym == XK_d || keysym == XK_Right)
-		r->keys |= KEY_RIGHT;
+		g->state.keys |= KEY_RIGHT;
 	return (0);
 }
 
-int	on_key_release(int keysym, t_renderer *r)
+int	on_key_release(int keysym, t_game *g)
 {
 	if (keysym == XK_a || keysym == XK_Left)
-		r->keys &= ~KEY_LEFT;
+		g->state.keys &= ~KEY_LEFT;
 	if (keysym == XK_d || keysym == XK_Right)
-		r->keys &= ~KEY_RIGHT;
+		g->state.keys &= ~KEY_RIGHT;
 	return (0);
 }
 
-t_vector translate(t_renderer *r, float x, float y)
+t_vector translate(t_game *g, float x, float y)
 {
 	return (t_vector){
-		.x = x - r->window.x,
-		.y = y - r->window.y
+		.x = x - g->window.x,
+		.y = y - g->window.y
 	};
 }
 
-int	ft_fill_tile(t_renderer *r, int tx, int ty)
+void	set_player_position(t_game *g, int tx, int ty)
 {
-	int _;
-	void *bg = mlx_get_data_addr(r->frame, &_, &_, &_);
-	if (!bg)
-		return (1);
-
-	if (tx < 0 || ty < 0 || tx >= MAP_WIDTH || ty >= MAP_HEIGHT)
-		return (0);
-
-	t_vector t = translate(r, tx * TILE_SIZE, ty * TILE_SIZE);
-	for (int j = 0; j < TILE_SIZE; j++) {
-		if (t.y + j >= r->window.h || t.y + j < 0)
-			continue;
-		for (int i = 0; i < TILE_SIZE; i++) {
-			if (t.x + i > r->window.w || t.x + i < 0)
-				continue;
-			int bg_idx = ((t.y + j) * r->window.w) + (t.x + i);
-			((uint32_t *)bg)[bg_idx] = BG_COLOR;
-		}
-	}
-	return (0);
+	g->player.x = tx * TILE_SIZE + .5 * (TILE_SIZE - g->player.w);
+	g->player.y = ty * TILE_SIZE + .5 * (TILE_SIZE - g->player.h);
+	g->player.px = g->player.x;
+	g->player.py = g->player.y;
 }
 
-
-int	ft_generate_map(t_renderer *r);
-
-void	set_player_position(t_renderer *r, int tx, int ty)
+void	player_hitbox(t_game *g)
 {
-	r->player.x = tx * TILE_SIZE + .5 * (TILE_SIZE - r->player.w);
-	r->player.y = ty * TILE_SIZE + .5 * (TILE_SIZE - r->player.h);
-	r->player.px = r->player.x;
-	r->player.py = r->player.y;
+	t_vector t0 = translate(g, g->player.x, g->player.y);
+	t_vector t1 = translate(g, g->player.x + g->player.w, g->player.y + g->player.h);
+
+	ft_line(g, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t0.y });
+	ft_line(g, (t_point){ t1.x, t0.y }, (t_point){ t1.x, t1.y });
+	ft_line(g, (t_point){ t1.x, t1.y }, (t_point){ t0.x, t1.y });
+	ft_line(g, (t_point){ t0.x, t1.y }, (t_point){ t0.x, t0.y });
+	ft_line(g, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t1.y });
+	ft_line(g, (t_point){ t0.x, t1.y }, (t_point){ t1.x, t0.y });
 }
 
-void	render_hitboxes(t_renderer *r)
-{
-	if (!g_debug_mode) {
-		ft_generate_map(r);
-		return;
-	}
-	for (int j = 0; j < MAP_HEIGHT; j++) {
-		for (int i = 0; i < MAP_WIDTH; i++) {
-			if (!is_wall(i, j)) continue ;
-			int mask = compute_texture_mask(i, j);
-			int tex_idx = get_texture_index(mask);
-			render_hitbox(r, tex_idx, i, j);
-		}
-	}
-}
-
-void	player_hitbox(t_renderer *r)
+void	render_hitboxes(t_game *g)
 {
 	if (!g_debug_mode)
-		return ;
-
-	t_vector t0 = translate(r, r->player.x, r->player.y);
-	t_vector t1 = translate(r, r->player.x + r->player.w, r->player.y + r->player.h);
-
-	ft_line(r, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t0.y });
-	ft_line(r, (t_point){ t1.x, t0.y }, (t_point){ t1.x, t1.y });
-	ft_line(r, (t_point){ t1.x, t1.y }, (t_point){ t0.x, t1.y });
-	ft_line(r, (t_point){ t0.x, t1.y }, (t_point){ t0.x, t0.y });
-	ft_line(r, (t_point){ t0.x, t0.y }, (t_point){ t1.x, t1.y });
-	ft_line(r, (t_point){ t0.x, t1.y }, (t_point){ t1.x, t0.y });
+		return;
+	for (int j = 0; j < g->opt.map_height; j++) {
+		for (int i = 0; i < g->opt.map_width; i++) {
+			int mask = compute_texture_mask(g, i, j);
+			int tex_idx = get_texture_index(mask);
+			if (g->map_matrix[j][i] == 'C')
+				render_hitbox(g, TEX_COLLECTIBLE, i, j);
+			else if (g->map_matrix[j][i] == '1')
+				render_hitbox(g, tex_idx, i, j);
+		}
+	}
+	player_hitbox(g);
 }
 
-void	ft_image_to_vbuffer(t_renderer *r, void *img, t_rect pos);
+void	ft_image_to_vbuffer(t_game *g, void *img, t_rect pos);
 
-void	ft_render_tile(t_renderer *r, int tx, int ty)
+void	ft_render_tile(t_game *g, int tx, int ty)
 {
-	if (!is_wall(tx, ty)) {
-		ft_fill_tile(r, tx, ty);
-		return ;
-	}
-	int mask = compute_texture_mask(tx, ty);
+	int mask = compute_texture_mask(g, tx, ty);
 	int tex_idx = get_texture_index(mask);
-	t_vector t = translate(r, tx * TILE_SIZE, ty * TILE_SIZE);
-	ft_image_to_vbuffer(r, r->textures[tex_idx], (t_rect){
+	t_vector t = translate(g, tx * TILE_SIZE, ty * TILE_SIZE);
+	ft_image_to_vbuffer(g, g->textures[tex_idx], (t_rect){
 		t.x, t.y, TILE_SIZE, TILE_SIZE
 	});
 	if (g_debug_mode)
-		render_hitbox(r, tex_idx, tx, ty);
+		render_hitbox(g, tex_idx, tx, ty);
 }
 
-void	player_update_tiles(t_renderer *r)
-{
-	int x0_ = r->player.px / TILE_SIZE;
-	int y0_ = r->player.py / TILE_SIZE;
-	int x1_ = (r->player.px + r->player.w) / TILE_SIZE;
-	int y1_ = (r->player.py + r->player.h) / TILE_SIZE;
-
-	int	x0 = r->player.x / TILE_SIZE;
-	int	y0 = r->player.y / TILE_SIZE;
-	int	x1 = (r->player.x + r->player.w) / TILE_SIZE;
-	int	y1 = (r->player.y + r->player.h) / TILE_SIZE;
-
-	ft_render_tile(r, x0_, y0_);
-	ft_render_tile(r, x0_, y1_);
-	ft_render_tile(r, x1_, y0_);
-	ft_render_tile(r, x1_, y1_);
-
-	ft_render_tile(r, x0, y0);
-	ft_render_tile(r, x0, y1);
-	ft_render_tile(r, x1, y0);
-	ft_render_tile(r, x1, y1);
-}
-
-int horizontal_overlap(t_player *player, t_hitbox box) {
+int horizontal_overlap(struct s_player *player, t_hitbox box) {
 	return (player->x < box.r) && (player->x + player->w > box.l);
 }
 
-int vertical_overlap(t_player *player, t_hitbox box) {
+int vertical_overlap(struct s_player *player, t_hitbox box) {
 	return (player->y < box.b) && (player->y + player->h > box.t);
 }
 
-void move_down(t_player *p, t_hitbox box) {
+void move_down(struct s_player *p, t_hitbox box) {
 	float overlap = p->y + p->h - box.t;
 	float prev_overlap = p->py + p->h - box.t;
 	if (prev_overlap <= 0 && overlap > 0 && horizontal_overlap(p, box)) {
 		p->vy = 0;
-		p->y = box.t - p->h - COLLISION_OFFSET;
+		p->y = box.t - p->h;
 	}
 }
 
-void move_up(t_player *p, t_hitbox box) {
+void move_up(struct s_player *p, t_hitbox box) {
 	float overlap = box.b - p->y;
 	float prev_overlap = box.b - p->py;
 	if (prev_overlap <= 0 && overlap > 0 && horizontal_overlap(p, box)) {
 		p->vy = 0;
-		p->y = box.b + COLLISION_OFFSET;
+		p->y = box.b;
 	}
 }
 
-void move_right(t_player *p, t_hitbox box) {
+void move_right(struct s_player *p, t_hitbox box) {
 	float overlap = p->x + p->w - box.l;
 	float prev_overlap = p->px + p->w - box.l;
 	if (prev_overlap <= 0 && overlap > 0 && vertical_overlap(p, box)) {
 		p->vx = 0;
-		p->x = box.l - p->w - COLLISION_OFFSET;
-	}
-}
-void move_left(t_player *p, t_hitbox box) {
-	float overlap = box.r - p->x;
-	float prev_overlap = box.r - p->px;
-	if (prev_overlap <= 0 && overlap > 0 && vertical_overlap(p, box)) {
-		p->vx = 0;
-		p->x = box.r + COLLISION_OFFSET;
+		p->x = box.l - p->w;
 	}
 }
 
-void	ft_collision_x(t_player *p)
+void move_left(struct s_player *p, t_hitbox box) {
+	float overlap = box.r - p->x;
+	float prev_overlap = box.r - p->px;
+	if (prev_overlap <= 0 && overlap > 0 && vertical_overlap(p, box)) {
+		p->vx = -1e-10;
+		p->x = box.r;
+	}
+}
+
+void	ft_collision_x(t_game *g, struct s_player *p)
 {
 	t_hitbox	box;
 	int			y0 = p->y / TILE_SIZE;
@@ -598,20 +539,20 @@ void	ft_collision_x(t_player *p)
 	if (p->vx > 0) {
 		for (int y = y0; y <= y1; y++) {
 			int	tx = (p->x + p->w) / TILE_SIZE;
-			if (is_solid(tx, y, &box) == 1)
+			if (is_solid(g, tx, y, &box) == 1)
 				move_right(p, box);
 		}
 	}
 	else if (p->vx < 0) {
 		for (int y = y0; y <= y1; y++) {
 			int	tx = p->x / TILE_SIZE;
-			if (is_solid(tx, y, &box))
+			if (is_solid(g, tx, y, &box))
 				move_left(p, box);
 		}
 	}
 }
 
-void	ft_collision_y(t_player *p)
+void	ft_collision_y(t_game *g, struct s_player *p)
 {
 	t_hitbox	box;
 	int x0 = p->x / TILE_SIZE;
@@ -619,59 +560,86 @@ void	ft_collision_y(t_player *p)
 	if (p->vy > 0) {
 		for (int x = x0; x <= x1; x++) {
 			int	ty = (p->y + p->h) / TILE_SIZE;
-			if (is_solid(x, ty, &box))
+			if (is_solid(g, x, ty, &box))
 				move_down(p, box);
 		}
 	}
 	else if (p->vy < 0) {
 		for (int x = x0; x <= x1; x++) {
 			int	ty = p->y / TILE_SIZE;
-			if (is_solid(x, ty, &box))
+			if (is_solid(g, x, ty, &box))
 				move_up(p, box);
 		}
 	}
 }
 
-void	ft_player_update(t_renderer *r)
+void	ft_player_update(t_game *g)
 {
-	t_player	*p;
+	struct s_player	*p;
 
-	player_update_tiles(r);
-	player_hitbox(r);
-	p = &r->player;
-	p->vx *= FRICTION;
-	p->vy += GRAVITY;
-	if (r->keys & KEY_LEFT)
-		p->vx = -VELOCITY;
-	else if (r->keys & KEY_RIGHT)
-		p->vx = VELOCITY;
-	if (r->should_dash) {
-		// p->vx *= DASH_MULTIPLIER;
-		if (r->keys & KEY_LEFT || r->keys & KEY_RIGHT)
-			p->vx *= DASH_MULTIPLIER;
-		r->should_dash--;
+	p = &g->player;
+	p->vx *= g->opt.friction;
+	p->vy += g->opt.gravity;
+	if (g->state.keys & KEY_LEFT)
+		p->vx = -g->opt.velocity;
+	else if (g->state.keys & KEY_RIGHT)
+		p->vx = g->opt.velocity;
+	if (g->state.should_dash) {
+		if (g->state.keys & KEY_LEFT || g->state.keys & KEY_RIGHT)
+			p->vx *= g->opt.dash_multiplier;
+		g->state.should_dash--;
 	}
 	p->px = p->x;
 	p->x += p->vx;
-	ft_collision_x(p);
+	ft_collision_x(g, p);
 	p->py = p->y;
 	p->y += p->vy;
-	ft_collision_y(p);
+	ft_collision_y(g, p);
 }
 
-void	ft_image_to_vbuffer(t_renderer *r, void *img, t_rect p)
+void	ft_image_transform(t_game *g, void *img, t_rect p,
+	uint32_t (*transform)(t_game *g, uint32_t *buf, t_rect p))
 {
+
 	int	_;
-	void	*bg = mlx_get_data_addr(r->frame, &_, &_, &_);
+	void	*bg = mlx_get_data_addr(g->frame, &_, &_, &_);
 	void	*fg = mlx_get_data_addr(img, &_, &_, &_);
 
 	int x0 = (p.x < 0) ? -p.x : 0;
-	int x1 = (p.x + p.w > r->window.w) ? r->window.w - p.x : p.w;
+	int x1 = (p.x + p.w > g->window.w) ? g->window.w - p.x : p.w;
 	int y0 = (p.y < 0) ? -p.y : 0;
-	int y1 = (p.y + p.h > r->window.h) ? r->window.h - p.y : p.h;
+	int y1 = (p.y + p.h > g->window.h) ? g->window.h - p.y : p.h;
+
+	uint32_t *bg_ptr = (uint32_t *)bg + ((p.y + y0) * g->window.w) + (p.x + x0);
+
+	for (int j = y0; j < y1; j++) {
+		uint32_t *bg_row = bg_ptr;
+
+		for (int i = x0; i < x1; i++) {
+			uint32_t bg_px = *bg_row;
+
+			*bg_row = blend_pixel_fast(transform(g, fg, (t_rect){
+				.x = i, .y = j, .w = p.w, .h = p.h }), bg_px);
+			bg_row++;
+		}
+
+		bg_ptr += g->window.w;
+	}
+}
+
+void	ft_image_to_vbuffer(t_game *g, void *img, t_rect p)
+{
+	int	_;
+	void	*bg = mlx_get_data_addr(g->frame, &_, &_, &_);
+	void	*fg = mlx_get_data_addr(img, &_, &_, &_);
+
+	int x0 = (p.x < 0) ? -p.x : 0;
+	int x1 = (p.x + p.w > g->window.w) ? g->window.w - p.x : p.w;
+	int y0 = (p.y < 0) ? -p.y : 0;
+	int y1 = (p.y + p.h > g->window.h) ? g->window.h - p.y : p.h;
 
 	uint32_t *fg_ptr = (uint32_t *)fg + (y0 * p.w) + x0;
-	uint32_t *bg_ptr = (uint32_t *)bg + ((p.y + y0) * r->window.w) + (p.x + x0);
+	uint32_t *bg_ptr = (uint32_t *)bg + ((p.y + y0) * g->window.w) + (p.x + x0);
 
 	for (int j = y0; j < y1; j++) {
 		uint32_t *fg_row = fg_ptr;
@@ -686,122 +654,125 @@ void	ft_image_to_vbuffer(t_renderer *r, void *img, t_rect p)
 		}
 
 		fg_ptr += p.w;
-		bg_ptr += r->window.w;
+		bg_ptr += g->window.w;
 	}
 }
 
-void	ft_camera_calibrate(t_renderer *r)
+void	ft_camera_calibrate(t_game *g)
 {
-	if (r->window.x < 0)
-		r->window.x = 0;
-	if (r->window.y < 0)
-		r->window.y = 0;
-	if (r->window.x > r->map.w - r->window.w)
-		r->window.x = r->map.w - r->window.w;
-	if (r->window.y > r->map.h - r->window.h)
-		r->window.y = r->map.h - r->window.h;
+	if (g->window.x < 0)
+		g->window.x = 0;
+	if (g->window.y < 0)
+		g->window.y = 0;
+	if (g->window.x > g->map.w - g->window.w)
+		g->window.x = g->map.w - g->window.w;
+	if (g->window.y > g->map.h - g->window.h)
+		g->window.y = g->map.h - g->window.h;
 }
 
-void	ft_camera_update(t_renderer *r)
+void	ft_camera_update(t_game *g)
 {
-	const int	x_offset = r->player.x - r->window.w / 2.;
-	const int	y_offset = r->player.y - r->window.h / 2.;
+	const int	x_offset = g->player.x - g->window.w / 2.;
+	const int	y_offset = g->player.y - g->window.h / 2.;
 
-	if (r->player.x > r->window.x + r->window.w / 2.
-		&& r->window.x + r->window.w < r->map.w)
-		r->window.x = x_offset;
-	else if (r->player.x < r->window.x + r->window.w / 2.
-		&& r->window.x > 0)
-		r->window.x = x_offset;
-	if (r->player.y > r->window.y + r->window.h / 2.)
-		r->window.y = y_offset;
-	else if (r->player.y < r->window.y + r->window.h / 2.)
-		r->window.y = y_offset;
-	ft_camera_calibrate(r);
+	if (g->player.x > g->window.x + g->window.w / 2.
+		&& g->window.x + g->window.w < g->map.w)
+		g->window.x = x_offset;
+	else if (g->player.x < g->window.x + g->window.w / 2.
+		&& g->window.x > 0)
+		g->window.x = x_offset;
+	if (g->player.y > g->window.y + g->window.h / 2.)
+		g->window.y = y_offset;
+	else if (g->player.y < g->window.y + g->window.h / 2.)
+		g->window.y = y_offset;
+	ft_camera_calibrate(g);
 }
 
-int	render(t_renderer *r)
+uint32_t	ft_transform_mirror(t_game *g, uint32_t *buf, t_rect p)
 {
-	if (!r->should_render)
-		return (0);
-	r->frame_count++;
-	r->should_render = 0;
-	ft_player_update(r);
-	ft_camera_update(r);
-	// ft_generate_background(r);
-	ft_generate_map(r);
-	t_rect p = {
-		-r->window.x * PARALLAX_CONSTANT,
-		-r->window.y * PARALLAX_CONSTANT,
-		r->map.w * PARALLAX_CONSTANT + r->window.w / 2.,
-		r->map.h * PARALLAX_CONSTANT + r->window.h / 2.,
-	};
-	ft_image_to_vbuffer(r, r->parallaxes[0], p);
-	render_hitboxes(r);
-	t_vector t = translate(r,
-		r->player.x - .5 * (TILE_SIZE - r->player.w),
-		r->player.y - .5 * (TILE_SIZE - r->player.h));
-	ft_image_to_vbuffer(r, r->textures[TEX_PLAYER], (t_rect){
+	if (g->player.vx < 0)
+		return buf[(p.y + 1) * p.w - p.x];
+	return buf[p.y * p.w + p.x];
+}
+
+void	ft_render_player(t_game *g)
+{
+	t_vector t = translate(g,
+		g->player.x - .5 * (TILE_SIZE - g->player.w),
+		g->player.y - .5 * (TILE_SIZE - g->player.h));
+	ft_image_transform(g, g->textures[TEX_PLAYER], (t_rect){
 		t.x, t.y, TILE_SIZE, TILE_SIZE
-	});
-	mlx_put_image_to_window(r->mlx, r->win, r->frame, 0, 0);
+	}, ft_transform_mirror);
+}
+
+int	render(t_game *g)
+{
+	if (!g->state.should_render)
+		return (0);
+	g->state.frame_count++;
+	g->state.should_render = 0;
+	ft_player_update(g);
+	ft_camera_update(g);
+	t_rect p = {
+		-g->window.x * PARALLAX_CONSTANT,
+		-g->window.y * PARALLAX_CONSTANT,
+		g->map.w * PARALLAX_CONSTANT + g->window.w / 2.,
+		g->map.h * PARALLAX_CONSTANT + g->window.h / 2.,
+	};
+	ft_image_to_vbuffer(g, g->parallaxes[0], p);
+	ft_render_map(g);
+	ft_render_player(g);
+	if (g_debug_mode)
+		render_hitboxes(g);
+	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }
 
-int	ft_register_hooks(t_renderer *r)
+int	ft_register_hooks(t_game *g)
 {
-	mlx_hook(r->win, KeyPress, KeyPressMask, on_key_press, r);
-	mlx_hook(r->win, KeyRelease, KeyReleaseMask, on_key_release, r);
-	mlx_hook(r->win, DestroyNotify, 0, on_destroy, r);
-	mlx_loop_hook(r->mlx, render, r);
+	mlx_hook(g->win, KeyPress, KeyPressMask, on_key_press, g);
+	mlx_hook(g->win, KeyRelease, KeyReleaseMask, on_key_release, g);
+	mlx_hook(g->win, DestroyNotify, 0, on_destroy, g);
+	mlx_loop_hook(g->mlx, render, g);
 	return (0);
 }
 
-int	ft_init_player(t_renderer *r)
+int	ft_init_player(t_game *g)
 {
-	r->player.w = 32;
-	r->player.h = 56;
-	r->window.w = WINDOW_W;
-	r->window.h = WINDOW_H;
-	r->map.w = MAP_WIDTH * TILE_SIZE;
-	r->map.h = MAP_HEIGHT * TILE_SIZE;
-	if (r->map.w < r->window.w)
-		r->window.x = (r->map.w - r->window.w) / 2;
-	if (r->map.h < r->window.h)
-		r->window.y = (r->map.h - r->window.h) / 2;
+	g->player.w = 32;
+	g->player.h = 56;
+	g->window.w = WINDOW_W;
+	g->window.h = WINDOW_H;
+	g->map.w = g->opt.map_width * TILE_SIZE;
+	g->map.h = g->opt.map_height * TILE_SIZE;
+	if (g->map.w < g->window.w)
+		g->window.x = (g->map.w - g->window.w) / 2;
+	if (g->map.h < g->window.h)
+		g->window.y = (g->map.h - g->window.h) / 2;
 	return (0);
 }
 
-int	ft_generate_map(t_renderer *r)
+int	ft_render_map(t_game *g)
 {
-	for (int j = 0; j < MAP_HEIGHT; j++) {
-		for (int i = 0; i < MAP_WIDTH; i++) {
-			t_vector t = translate(r, i * TILE_SIZE, j * TILE_SIZE);
-			if (map[j][i] == 'P' && r->player.x == 0 && r->player.y == 0)
-				set_player_position(r, i, j);
-			if (map[j][i] == 'E')
-				ft_image_to_vbuffer(r, r->textures[TEX_EXIT], (t_rect){
+	for (int j = 0; j < g->opt.map_height; j++) {
+		for (int i = 0; i < g->opt.map_width; i++) {
+			t_vector t = translate(g, i * TILE_SIZE, j * TILE_SIZE);
+			if (g->map_matrix[j][i] == 'P' && g->player.x == 0 && g->player.y == 0)
+				set_player_position(g, i, j);
+			if (g->map_matrix[j][i] == 'E')
+				ft_image_to_vbuffer(g, g->textures[TEX_EXIT], (t_rect){
 					t.x, t.y, TILE_SIZE, TILE_SIZE });
-			if (map[j][i] == 'C')
-				ft_image_to_vbuffer(r, r->textures[TEX_COLLECTIBLE], (t_rect){
+			if (g->map_matrix[j][i] == 'C')
+				ft_image_to_vbuffer(g, g->textures[TEX_COLLECTIBLE], (t_rect){
 					t.x + 16, t.y + 32, 32, 32 });
-			if (!is_wall(i, j)) continue ;
-			int mask = compute_texture_mask(i, j);
+			if (!is_wall(g, i, j)) continue ;
+			int mask = compute_texture_mask(g, i, j);
 			int tex_idx = get_texture_index(mask);
-			ft_image_to_vbuffer(r, r->textures[tex_idx], (t_rect){
+			ft_image_to_vbuffer(g, g->textures[tex_idx], (t_rect){
 				t.x, t.y, TILE_SIZE, TILE_SIZE
 			});
 		}
 	}
-	return (0);
-}
-
-int	ft_generate_background(t_renderer *r)
-{
-	for(int j = 0; j < MAP_HEIGHT; j++)
-		for (int i = 0; i < MAP_WIDTH; i++)
-			if (ft_fill_tile(r, i, j))
-				return (1);
 	return (0);
 }
 
@@ -810,20 +781,20 @@ void	ft_debug(char *info)
 	ft_printf("\e[95m[DBG]\e[m %s\n", info);
 }
 
-int	ft_init_parallax(t_renderer *r)
+int	ft_init_parallax(t_game *g)
 {
 	float parallax = 1;
 	int _;
 	for (int k = 0; k < PARALLAX_LAYERS; k++)
 	{
 		parallax *= PARALLAX_CONSTANT;
-		int width = MAP_WIDTH * TILE_SIZE * parallax + r->window.w / 2.;
-		int height = MAP_HEIGHT * TILE_SIZE * parallax + r->window.h / 2.;
+		int width = g->opt.map_width * TILE_SIZE * parallax + g->window.w / 2.;
+		int height = g->opt.map_height * TILE_SIZE * parallax + g->window.h / 2.;
 		printf("Trying to init %ix%i parallax\n", width, height);
-		r->parallaxes[k] = mlx_new_image(r->mlx, width, height);
-		if (!r->parallaxes[k])
+		g->parallaxes[k] = mlx_new_image(g->mlx, width, height);
+		if (!g->parallaxes[k])
 			return (1);
-		uint32_t *buf = (uint32_t *)mlx_get_data_addr(r->parallaxes[k], &_, &_, &_);
+		uint32_t *buf = (uint32_t *)mlx_get_data_addr(g->parallaxes[k], &_, &_, &_);
 		for (int j = 0; j < height; j++) {
 			for (int i = 0; i < width; i++) {
 				uint8_t r = 255. * i / width;
@@ -837,115 +808,123 @@ int	ft_init_parallax(t_renderer *r)
 	return (0);
 }
 
-void	launch_threads(t_renderer *r)
+void	launch_threads(t_game *g)
 {
-	pthread_create(&r->counter_thread, NULL, (t_thread)counter_thread, r);
-	pthread_create(&r->render_thread, NULL, (t_thread)render_thread, r);
+	pthread_create(&g->threads.counter, NULL, (t_thread)counter_thread, g);
+	pthread_create(&g->threads.render, NULL, (t_thread)render_thread, g);
 	ft_debug("Launched threads");
 }
 
-int	ft_init_renderer(t_renderer *r)
+int	ft_init_renderer(t_game *g)
 {
-	r->keys = 0;
-	r->mlx = mlx_init();
-	if (!r->mlx)
+	g->state.keys = 0;
+	g->mlx = mlx_init();
+	if (!g->mlx)
 		return (1);
 	ft_debug("Initialized MLX");
-	if (ft_load_textures(r))
+	if (ft_load_textures(g))
 		return (1);
 	ft_debug("Loaded textures");
-	ft_init_player(r);
+	ft_init_player(g);
 	ft_debug("Initialized player");
-	r->win = mlx_new_window(r->mlx, WINDOW_W, WINDOW_H,
+	g->win = mlx_new_window(g->mlx, WINDOW_W, WINDOW_H,
 		"So Long");
-	if (!r->win)
+	if (!g->win)
 	{
 		ft_printf("\e[91m[ERR]\e[m Failed to create a window\n");
-		free(r->mlx);
+		free(g->mlx);
 		return (1);
 	}
 	ft_debug("Created window");
-	r->frame = mlx_new_image(r->mlx, WINDOW_W, WINDOW_H);
-	if (!r->frame)
+	g->frame = mlx_new_image(g->mlx, WINDOW_W, WINDOW_H);
+	if (!g->frame)
 	{
 		ft_printf("\e[91m[ERR]\e[m Failed to generate frame\n");
 	}
 	ft_debug("Prepared frame");
-	if (ft_generate_background(r))
-	{
-		ft_printf("\e[91m[ERR]\e[m Failed to render background\n");
-		return (1);
-	}
-	ft_debug("Generated background");
-	if (ft_init_parallax(r))
+	if (ft_init_parallax(g))
 	{
 		ft_printf("\e[91m[ERR]\e[m Failed to initialize parallax: %m\n");
 		return (1);
 	}
 	ft_debug("Initialized parallax");
-	if (ft_generate_map(r))
+	if (ft_render_map(g))
 	{
 		ft_printf("\x1b[91m[ERR]\x1b[m Failed to generate map\n");
 		return (1);
 	}
-	launch_threads(r);
-	ft_debug("Generated map");
-	ft_register_hooks(r);
+	launch_threads(g);
+	ft_debug("Launched threads");
+	ft_register_hooks(g);
 	ft_debug("Registered hooks");
 	return (0);
 }
 
-void generate_map(unsigned int seed)
+void generate_map(t_game *g, unsigned int seed)
 {
     ft_printf("\e[95m[DBG]\e[m Seed %i\n", seed);
-    for (int y = 0; y < MAP_HEIGHT; y++) {
-        for (int x = 0; x < MAP_WIDTH; x++) {
-            map[y][x] = '1';
+    for (int y = 0; y < g->opt.map_height; y++) {
+        for (int x = 0; x < g->opt.map_width; x++) {
+            g->map_matrix[y][x] = '1';
         }
     }
 
-    int player_x = MAP_WIDTH / 2;
-    int player_y = MAP_HEIGHT / 2;
+    int x = g->opt.map_height / 2;
+    int y = g->opt.map_width / 2;
 
-    map[player_y][player_x] = 'P';
+    g->map_matrix[y][x] = 'P';
 
-    for (int i = 0; i < MAP_WIDTH * MAP_HEIGHT; i++) {
+    for (int i = 0; i < g->opt.map_width * g->opt.map_height; i++) {
         int dir = ft_rand(seed) % 4;
         switch (dir) {
-            case 0: if (player_x > 1) player_x--; break;
-            case 1: if (player_x < MAP_WIDTH - 2) player_x++; break;
-            case 2: if (player_y > 1) player_y--; break;
-            case 3: if (player_y < MAP_HEIGHT - 2) player_y++; break;
+            case 0: if (x > 1) x--; break;
+            case 1: if (x < g->opt.map_width - 2) x++; break;
+            case 2: if (y > 1) y--; break;
+            case 3: if (y < g->opt.map_height - 2) y++; break;
         }
-        if (map[player_y][player_x] == '1')
-            map[player_y][player_x] = '0';
+        if (g->map_matrix[y][x] == '1')
+            g->map_matrix[y][x] = '0';
     }
 
-    for (int y = 0; y < MAP_HEIGHT - 1; y++) {
-        for (int x = 0; x < MAP_WIDTH; x++) {
-            if (map[y][x] == '0' && map[y + 1][x] == '1') {
+    for (int y = 0; y < g->opt.map_height - 1; y++) {
+        for (int x = 0; x < g->opt.map_width; x++) {
+            if (g->map_matrix[y][x] == '0' && g->map_matrix[y + 1][x] == '1') {
                 if (ft_rand(seed) % 5 == 0) {
-                    map[y][x] = 'C';
+                    g->map_matrix[y][x] = 'C';
                 }
             }
         }
     }
 }
 
-void print_map() {
-    for (int y = 0; y < MAP_HEIGHT; y++) {
-        for (int x = 0; x < MAP_WIDTH; x++) {
-			printf("%c", map[y][x]);
+void print_map(t_game *g) {
+    for (int y = 0; y < g->opt.map_height; y++) {
+        for (int x = 0; x < g->opt.map_width; x++) {
+			printf("%c", g->map_matrix[y][x]);
         }
         printf("\n");
     }
+}
+
+int	allocate_map(t_game *g)
+{
+	g->map_matrix = malloc(sizeof(char *) * g->opt.map_height);
+	if (!g->map_matrix)
+		return (1);
+	for (int i = 0; i < g->opt.map_height; i++)
+	{
+		g->map_matrix[i] = malloc(g->opt.map_width);
+		if (!g->map_matrix[i])
+			return (1);
+	}
+	return 0;
 }
 
 #include <errno.h>
 
 int	main(int argc, char *argv[])
 {
-	t_renderer	r;
+	t_game	g;
 	int			seed;
 
 	seed = ft_time(NULL);
@@ -956,16 +935,18 @@ int	main(int argc, char *argv[])
 		ft_printf("\e[91m[ERR]\e[m Invalid seed\n");
 		return (1);
 	}
-	ft_memset(&r, 0, sizeof(t_renderer));
+	ft_memset(&g, 0, sizeof(t_game));
+	options_init_default(&g.opt);
+	allocate_map(&g);
 	ft_printf("\e[94m[INF]\e[m Starting game\n");
-	r.is_running = 1;
-	generate_map(seed);
-	if (ft_init_renderer(&r))
+	g.state.is_running = 1;
+	generate_map(&g, seed);
+	if (ft_init_renderer(&g))
 	{
-		cleanup(&r);
+		cleanup(&g);
 		return (1);
 	}
-	mlx_loop(r.mlx);
-	on_destroy(&r);
+	mlx_loop(g.mlx);
+	on_destroy(&g);
 	return (0);
 }

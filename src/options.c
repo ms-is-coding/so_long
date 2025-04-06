@@ -1,35 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   threads.c                                          :+:      :+:    :+:   */
+/*   options.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/03/24 16:49:49 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/06 19:41:11 by smamalig         ###   ########.fr       */
+/*   Created: 2025/04/06 19:03:13 by smamalig          #+#    #+#             */
+/*   Updated: 2025/04/06 23:42:12 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "so_long.h"
 
-void	*counter_thread(t_game *g)
+void	options_init_default(struct s_options *opt)
 {
-	while (g->state.is_running)
-	{
-		ft_sleep(1);
-		ft_printf("\r%i FPS    ", g->state.frame_count);
-		g->state.frame_count = 0;
-	}
-	return NULL;
+	opt->velocity = 3;
+	opt->gravity = 0.2;
+	opt->friction = 0.9;
+	opt->jump_force = 5.8;
+	opt->dash_multiplier = 3.5;
+	opt->dash_frames = 10;
+	opt->fps = 60;
+	opt->map_width = 32;
+	opt->map_height = 32;
 }
-
-void	*render_thread(t_game *g)
-{
-	while (g->state.is_running)
-	{
-		ft_usleep(1000000UL / g->opt.fps);
-		g->state.should_render = 1;
-	}
-	return (NULL);
-}
-

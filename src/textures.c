@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:13:32 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/03 18:29:02 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/06 19:50:07 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,7 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_COLLECTIBLE] = "assets/collectible.xpm",
 };
 
-static int	ft_load_texture(t_renderer *renderer, char *name, int index)
+static int	ft_load_texture(t_game *g, char *name, int index)
 {
 	int			width;
 	int			height;
@@ -92,7 +92,7 @@ static int	ft_load_texture(t_renderer *renderer, char *name, int index)
 		ft_printf("\e[91m[ERR]\e[m Missing texture [%i]\n", index);
 		return (1);
 	}
-	image = mlx_xpm_file_to_image(renderer->mlx, name, &width, &height);
+	image = mlx_xpm_file_to_image(g->mlx, name, &width, &height);
 	if (!image)
 	{
 		ft_printf("\e[91m[ERR]\e[0m Failed to load texture \'%s\'\n", name);
@@ -103,18 +103,18 @@ static int	ft_load_texture(t_renderer *renderer, char *name, int index)
 		ft_printf("\e[93m[WRN]\e[m Texture size mismatch \'%s\': %ix%i\n",
 			name, width, height);
 	}
-	renderer->textures[index] = image;
+	g->textures[index] = image;
 	return (0);
 }
 
-int	ft_load_textures(t_renderer *renderer)
+int	ft_load_textures(t_game *g)
 {
 	int	index;
 
 	index = 0;
 	while (index < TEX_COUNT)
 	{
-		if (ft_load_texture(renderer, g_texture_files[index], index))
+		if (ft_load_texture(g, g_texture_files[index], index))
 			return (1);
 		index++;
 	}

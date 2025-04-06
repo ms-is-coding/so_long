@@ -6,14 +6,14 @@
 #    By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/13 20:22:30 by smamalig          #+#    #+#              #
-#    Updated: 2025/04/03 11:08:02 by smamalig         ###   ########.fr        #
+#    Updated: 2025/04/06 19:18:35 by smamalig         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME           = so_long
 CC             = cc
 CFLAGS         = -Wall -Wextra -Werror -O3
-SRC_FILES      = main.c textures.c hitbox.c threads.c
+SRC_FILES      = main.c textures.c hitbox.c threads.c options.c
 SRCS           = $(addprefix src/, $(SRC_FILES))
 OBJ_DIR        = obj
 OBJS           = $(patsubst src/%.c, $(OBJ_DIR)/%.o, $(SRCS))
