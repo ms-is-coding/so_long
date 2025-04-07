@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/06 19:41:22 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 01:20:53 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,6 @@
 # include <pthread.h>
 # include <stdatomic.h>
 # include <stdbool.h>
-
-# define KEY_LEFT 1
-# define KEY_RIGHT 2
 
 # define DEBUG_COLOR 0xff0000
 
@@ -146,12 +143,12 @@ typedef struct s_game
 		int		w;
 		int		h;
 	}	player;
-	struct		s_threads
+	struct s_threads
 	{
 		pthread_t	counter;
 		pthread_t	render;
 	}	threads;
-	struct		s_options
+	struct s_options
 	{
 		float	velocity;
 		float	gravity;
@@ -164,36 +161,76 @@ typedef struct s_game
 		int		map_width;
 		int		map_height;
 	}	opt;
-	struct	s_state
+	struct s_input
 	{
-		int			should_dash;
-		int			keys;
+		struct s_mouse
+		{
+			int		x;
+			int		y;
+			bool	left;
+			bool	right;
+		}	mouse;
+		struct s_keys
+		{
+			bool	left;
+			bool	right;
+		}	keys;
+	}	input;
+	struct s_state
+	{
+		enum	e_scene {
+			SCENE_MAIN_MENU,
+			SCENE_LEVEL,
+			SCENE_PAUSE_MENU,
+			SCENE_OPTIONS_MENU,
+		} scene;
+		uint8_t		should_dash;
+		uint8_t		should_jump;
 		atomic_int	is_running;
 		atomic_int	frame_count;
 		atomic_int	should_render;
 	}	state;
+	struct s_time
+	{
+		int		frame_count;
+		int		frame_rate;
+		float	frame_time;
+		float	frame_delta;
+		float	frame_last;
+	}	time;
+	int			debug_mode;
 	t_rect		window;
 	t_rect		map;
 	char		**map_matrix;
 }	t_game;
 
-int			ft_render_map(t_game *r);
-int			ft_generate_background(t_game *r);
-int			ft_load_textures(t_game *r);
-t_hitbox	ft_absolute_hitbox(t_game *r, int x, int y);
+int			ft_render_map(t_game *g);
+int			ft_generate_background(t_game *g);
+int			ft_load_textures(t_game *g);
+t_hitbox	ft_absolute_hitbox(t_game *g, int x, int y);
 int			get_texture_index(int mask);
-int			compute_texture_mask(t_game *r, int x, int y);
-bool		is_wall(t_game *r, int x, int y);
-bool		is_solid(t_game *r, int x, int y, t_hitbox *box);
-void		render_hitbox(t_game *r, int tex_idx, int x, int y);
-void		ft_line(t_game *r, t_point p0, t_point p1);
-t_vector	translate(t_game *r, float x, float y);
-void		render_hitboxes(t_game *r);
+int			compute_texture_mask(t_game *g, int x, int y);
+bool		is_wall(t_game *g, int x, int y);
+bool		is_solid(t_game *g, int x, int y, t_hitbox *box);
+void		render_hitbox(t_game *g, int tex_idx, int x, int y);
+void		ft_line(t_game *g, t_point p0, t_point p1);
+t_vector	translate(t_game *g, float x, float y);
+void		render_hitboxes(t_game *g);
 void		options_init_default(struct s_options *opt);
 
 typedef void	*(*t_thread)(void *);
 
-void		*counter_thread(t_game *r);
-void		*render_thread(t_game *r);
+// threads
+void		launch_threads(t_game *g);
+void		*counter_thread(t_game *g);
+void		*render_thread(t_game *g);
+
+// hooks
+int			on_key_press(int keysym, t_game *g);
+int			on_key_release(int keysym, t_game *g);
+int			on_destroy(t_game *g);
+int			ft_register_hooks(t_game *g);
+
+void		ft_debug(char *msg);
 
 #endif

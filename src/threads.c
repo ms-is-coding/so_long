@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/24 16:49:49 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/06 19:41:11 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/07 15:54:34 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,3 +33,9 @@ void	*render_thread(t_game *g)
 	return (NULL);
 }
 
+void	launch_threads(t_game *g)
+{
+	pthread_create(&g->threads.counter, NULL, (t_thread)counter_thread, g);
+	pthread_create(&g->threads.render, NULL, (t_thread)render_thread, g);
+	ft_debug("Launched threads");
+}

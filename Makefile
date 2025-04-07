@@ -6,19 +6,19 @@
 #    By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/13 20:22:30 by smamalig          #+#    #+#              #
-#    Updated: 2025/04/06 19:18:35 by smamalig         ###   ########.fr        #
+#    Updated: 2025/04/07 18:30:47 by smamalig         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME           = so_long
 CC             = cc
-CFLAGS         = -Wall -Wextra -Werror -O3
-SRC_FILES      = main.c textures.c hitbox.c threads.c options.c
+CFLAGS         = -Wall -Wextra -Werror -O3 -g3
+SRC_FILES      = main.c textures.c hitbox.c threads.c options.c hooks.c
 SRCS           = $(addprefix src/, $(SRC_FILES))
 OBJ_DIR        = obj
 OBJS           = $(patsubst src/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 INCLUDES       = -Iinclude -Ilibft/include -Ilibmlx -Ilibft_gl/include
-HEADERS        = $(wildcard include/*.h)
+HEADERS        = include/so_long.h
 
 LIBFT          = libft
 LIBFT_FLAGS    = -Llibft -lft
@@ -44,13 +44,13 @@ bonus: all
 
 $(NAME): $(LIBFT) $(LIBMLX) $(OBJS)
 	@printf "$(BLUE)%s$(RESET): $(YELLOW)Building $(NAME)...$(RESET)\n" $(NAME)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(NAME)
+	@$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o $(NAME)
 	@printf "$(BLUE)%s$(RESET): $(GREEN)Successfully built $(NAME)$(RESET)\n" $(NAME)
 
 $(OBJ_DIR)/%.o: src/%.c $(HEADERS)
 	@mkdir -p $(dir $@)
 	@printf "$(BLUE)%s$(RESET): $(MAGENTA)Compiling$(RESET) $<\n" $(NAME)
-	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 $(LIBFT):
 	@make -C $(LIBFT_DIR) --no-print-directory
@@ -71,4 +71,4 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re libft bonus $(LIBFT) $(LIBMLX)
+.PHONY: all clean fclean re bonus debug $(LIBFT) $(LIBMLX)

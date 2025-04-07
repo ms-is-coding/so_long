@@ -1,11 +1,11 @@
 - AABB collision checks and prevent tunneling
 - physics engine independent of the frame count
 - user interface
-- read settings from file (syntax TBD, probably a simple key-value file or simplified toml)
+- gaussian blur for pause menu
+- read settings from file (syntax TBD, probably a simple key-value file)
 - write settings to file
 - read map from file
 - allow users to change display resolution
 - move code to bonus directory and implement the not fancy :( game
 - implement several parallax layers
 - nice animations
-
