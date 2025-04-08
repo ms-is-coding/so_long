@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 01:20:53 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 17:58:16 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -122,6 +122,7 @@ enum
 	TEX_LOADING_12,
 	TEX_LOADING_13,
 	TEX_COLLECTIBLE,
+	TEX_FONT,
 	TEX_COUNT
 };
 
@@ -130,6 +131,7 @@ typedef struct s_game
 	void		*mlx;
 	void		*win;
 	void		*frame;
+	void		*frame2;
 	void		*parallaxes[PARALLAX_LAYERS];
 	void		*textures[TEX_COUNT];
 	struct s_player

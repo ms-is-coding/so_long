@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 01:31:04 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 20:20:48 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -272,13 +272,12 @@ void	ft_player_update(t_game *g)
 	ft_collision_y(g, p);
 }
 
-void	ft_image_transform(t_game *g, void *img, t_rect p,
+void	ft_image_transform(t_game *g, void *dst, void *src, t_rect p,
 	uint32_t (*transform)(t_game *g, uint32_t *buf, t_rect p))
 {
-
 	int	_;
-	void	*bg = mlx_get_data_addr(g->frame, &_, &_, &_);
-	void	*fg = mlx_get_data_addr(img, &_, &_, &_);
+	void	*bg = mlx_get_data_addr(dst, &_, &_, &_);
+	void	*fg = mlx_get_data_addr(src, &_, &_, &_);
 
 	int x0 = (p.x < 0) ? -p.x : 0;
 	int x1 = (p.x + p.w > g->window.w) ? g->window.w - p.x : p.w;
@@ -297,7 +296,6 @@ void	ft_image_transform(t_game *g, void *img, t_rect p,
 				.x = i, .y = j, .w = p.w, .h = p.h }), bg_px);
 			bg_row++;
 		}
-
 		bg_ptr += g->window.w;
 	}
 }
@@ -327,52 +325,15 @@ void	ft_image_to_vbuffer(t_game *g, void *img, t_rect p)
 			*bg_row = blend_pixel_fast(fg_px, bg_px);
 			bg_row++;
 		}
-
 		fg_ptr += p.w;
 		bg_ptr += g->window.w;
 	}
 }
 
-void	ft_camera_calibrate(t_game *g)
-{
-	(void)g;
-	// if (g->window.w < g->map.w)
-	// {
-	// 	if (g->window.x < 0)
-	// 		g->window.x = 0;
-	// 	if (g->window.x > g->map.w - g->window.w)
-	// 		g->window.x = g->map.w - g->window.w;
-	// }
-	// else
-	// 	g->window.x = (g->map.w - g->window.w) / 2;
-	// if (g->window.h < g->map.h) {
-	// 	if (g->window.y < 0)
-	// 		g->window.y = 0;
-	// 	if (g->window.y > g->map.h - g->window.h)
-	// 		g->window.y = g->map.h - g->window.h;
-	// }
-	// else
-	// 	g->window.y = (g->window.h - g->map.h) / 2;
-}
-
 void	ft_camera_update(t_game *g)
 {
-	const int	x_offset = g->player.x - .5 * (g->window.w - g->player.w);
-	const int	y_offset = g->player.y - .5 * (g->window.h - g->player.h);
-
-	g->window.x = x_offset;
-	g->window.y = y_offset;
-	//if (g->player.x > g->window.x + g->window.w / 2.
-	//	&& g->window.x + g->window.w < g->map.w)
-	//	g->window.x = x_offset;
-	//else if (g->player.x < g->window.x + g->window.w / 2.
-	//	&& g->window.x > 0)
-	//	g->window.x = x_offset;
-	//if (g->player.y > g->window.y + g->window.h / 2.)
-	//	g->window.y = y_offset;
-	//else if (g->player.y < g->window.y + g->window.h / 2.)
-	//	g->window.y = y_offset;
-	ft_camera_calibrate(g);
+	g->window.x = g->player.x - .5 * (g->window.w - g->player.w);
+	g->window.y = g->player.y - .5 * (g->window.h - g->player.h);
 }
 
 uint32_t	ft_transform_mirror(t_game *g, uint32_t *buf, t_rect p)
@@ -387,47 +348,191 @@ void	ft_render_player(t_game *g)
 	t_vector t = translate(g,
 		g->player.x - .5 * (TILE_SIZE - g->player.w),
 		g->player.y - .5 * (TILE_SIZE - g->player.h));
-	ft_image_transform(g, g->textures[TEX_PLAYER], (t_rect){
-		t.x, t.y, TILE_SIZE, TILE_SIZE
-	}, ft_transform_mirror);
+	ft_image_transform(g, g->frame, g->textures[TEX_PLAYER], (t_rect){
+		t.x, t.y, TILE_SIZE, TILE_SIZE }, ft_transform_mirror);
 }
 
-void	render_button(t_game *g, t_rect btn, int color)
+void	draw_char(t_game *g, t_point pos, char c, int color)
 {
-	for (int y = btn.y; y < btn.y + btn.h; y++)
-		for (int x = btn.x; x < btn.x + btn.w; x++)
-			mlx_pixel_put(g->mlx, g->win, x, y, color);
+	int	_;
+	uint32_t	*bg = (uint32_t *)mlx_get_data_addr(g->frame, &_, &_, &_);
+	uint32_t	*fg = (uint32_t *)mlx_get_data_addr(g->textures[TEX_FONT], &_, &_, &_);
+
+	int x_offset = (c & 0xf) * 30;
+	int y_offset = ((c >> 4) - 2) * 30;
+
+	for (int j = 0; j < 30; j++) {
+		for (int i = 0; i < 30; i++) {
+			if (fg[(y_offset + j) * 480 + x_offset + i] == 0xffffff)
+				bg[(pos.y + j) * g->window.w + pos.x + i] = color;
+		}
+	}
+}
+
+void	render_button(t_game *g, t_point btn, const char *text, int color)
+{
+	int i = 0;
+	while (*text) {
+		draw_char(g, (t_point){ btn.x + i, btn.y }, *text, color);
+		i += 30;
+		text++;
+	}
+}
+
+uint32_t	ft_transform_gaussian_blur(t_game *game, uint32_t *buf, t_rect p)
+{
+	(void)game;
+	static const int kernel[5][5] = {
+		{1,  4,  6,  4, 1},
+		{4, 16, 20, 16, 4},
+		{6, 20, 36, 20, 6},
+		{4, 16, 20, 16, 4},
+		{1,  4,  6,  4, 1},
+	};
+	uint32_t sum_r = 0;
+	uint32_t sum_g = 0;
+	uint32_t sum_b = 0;
+
+	for (int dy = -2; dy <= 2; dy++) {
+		for (int dx = -2; dx <= 2; dx++) {
+			int sample_x = p.x + dx;
+			int sample_y = p.y + dy;
+
+			// Clamp sample coordinates to the image boundaries
+			if (sample_x < 0)
+				sample_x = 0;
+			else if (sample_x >= p.w)
+				sample_x = p.w - 1;
+
+			if (sample_y < 0)
+				sample_y = 0;
+			else if (sample_y >= p.h)
+				sample_y = p.h - 1;
+
+			uint32_t pixel = buf[sample_y * p.w + sample_x];
+
+			// Extract color components
+			int r = (pixel >> 16) & 0xFF;
+			int g = (pixel >> 8) & 0xFF;
+			int b = pixel & 0xFF;
+
+			int weight = kernel[dy + 2][dx + 2];
+			sum_r += r * weight;
+			sum_g += g * weight;
+			sum_b += b * weight;
+		}
+	}
+
+	sum_r >>= 8;
+	sum_g >>= 8;
+	sum_b >>= 8;
+
+	return (sum_r << 16) | (sum_g << 8) | sum_b;
+}
+
+uint32_t	ft_transform_none(t_game *g, uint32_t *buf, t_rect p)
+{
+	(void)g;
+	return buf[p.y * p.w + p.x];
+}
+
+uint32_t	ft_transform_ignore_alpha(t_game *g, uint32_t *buf, t_rect p)
+{
+	(void)g;
+	return 0xffffff & buf[p.y * p.w + p.x];
+}
+
+void	new_button(t_game *g, const char *text, t_point btn, void (*on_click)(t_game *g))
+{
+	static bool clicked = false;
+	struct s_mouse mouse = g->input.mouse;
+	bool is_inside = mouse.x > btn.x && mouse.x <= btn.x + 30 * (int)ft_strlen(text)
+		&& mouse.y >= btn.y && mouse.y <= btn.y + 30;
+	render_button(g, btn, text, is_inside ? 0x80ff00 : 0xffffff);
+	if (is_inside && mouse.left)
+		clicked = true;
+	if (is_inside && clicked && !mouse.left)
+	{
+		on_click(g);
+		clicked = false;
+	}
+}
+
+void	start_click(t_game *g)
+{
+	g->state.scene = SCENE_LEVEL;
+}
+
+void	resume_click(t_game *g)
+{
+	g->state.scene = SCENE_LEVEL;
+}
+
+void	options_click(t_game *g)
+{
+	g->state.scene = SCENE_OPTIONS_MENU;
+}
+
+void	exit_click(t_game *g)
+{
+	on_destroy(g);
+}
+
+void	pause_click(t_game *g)
+{
+	g->state.scene = SCENE_PAUSE_MENU;
+}
+
+void	void_click(t_game *g)
+{
+	(void)g;
+}
+
+static bool blur_rendered = false;
+
+void	render_blur(t_game *g)
+{
+	if (blur_rendered)
+		return ;
+	blur_rendered = true;
+	ft_image_transform(g, g->frame2, g->frame, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+		ft_transform_gaussian_blur);
+	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+		ft_transform_gaussian_blur);
+	ft_image_transform(g, g->frame2, g->frame, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+		ft_transform_gaussian_blur);
+	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+		ft_transform_gaussian_blur);
 }
 
 int	render_menu(t_game *g)
 {
-	t_rect btn = { 100, 150, 135, 33 };
-	struct s_mouse mouse = g->input.mouse;
-	bool is_inside = mouse.x > btn.x && mouse.x <= btn.x + btn.w
-		&& mouse.y >= btn.y && mouse.y <= btn.y + btn.h;
-	render_button(g, btn, 0x808080);
-	if (is_inside && mouse.left)
-		g->state.scene = SCENE_LEVEL;
-	mlx_string_put(g->mlx, g->win, btn.x + 10, btn.y + 20, 0xffffff, "S T A R T   G A M E");
-	mlx_string_put(g->mlx, g->win, btn.x + 11, btn.y + 21, 0xffffff, "S T A R T   G A M E");
-	mlx_string_put(g->mlx, g->win, btn.x + 11, btn.y + 20, 0xffffff, "S T A R T   G A M E");
-	mlx_string_put(g->mlx, g->win, btn.x + 10, btn.y + 21, 0xffffff, "S T A R T   G A M E");
+	new_button(g, "start game", (t_point){ 100, 150 }, start_click);
+	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
+	return (0);
+}
+
+int	render_options_menu(t_game *g)
+{
+	render_blur(g);
+	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+		ft_transform_ignore_alpha);
+	ft_image_to_vbuffer(g, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H });
+	new_button(g, "---", (t_point){ 100, 150 }, void_click);
+	new_button(g, "return", (t_point){ 100, 200 }, pause_click);
+	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }
 
 int	render_pause_menu(t_game *g)
 {
-	t_rect btn = { 100, 150, 88, 33 };
-	struct s_mouse mouse = g->input.mouse;
-	bool is_inside = mouse.x > btn.x && mouse.x <= btn.x + btn.w
-		&& mouse.y >= btn.y && mouse.y <= btn.y + btn.h;
-	if (is_inside && mouse.left)
-		g->state.scene = SCENE_LEVEL;
-	render_button(g, btn, 0x808080);
-	mlx_string_put(g->mlx, g->win, btn.x + 10, btn.y + 20, 0xffffff, "R E S U M E");
-	mlx_string_put(g->mlx, g->win, btn.x + 11, btn.y + 21, 0xffffff, "R E S U M E");
-	mlx_string_put(g->mlx, g->win, btn.x + 11, btn.y + 20, 0xffffff, "R E S U M E");
-	mlx_string_put(g->mlx, g->win, btn.x + 10, btn.y + 21, 0xffffff, "R E S U M E");
+	render_blur(g);
+	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+		ft_transform_ignore_alpha);
+	new_button(g, "resume", (t_point){ 100, 150 }, resume_click);
+	new_button(g, "options", (t_point){ 100, 200 }, options_click);
+	new_button(g, "exit", (t_point){ 100, 250 }, exit_click);
+	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }
 
@@ -441,6 +546,9 @@ int	render(t_game *g)
 		return (render_menu(g));
 	if (g->state.scene == SCENE_PAUSE_MENU)
 		return (render_pause_menu(g));
+	if (g->state.scene == SCENE_OPTIONS_MENU)
+		return (render_options_menu(g));
+	blur_rendered = false;
 	ft_player_update(g);
 	ft_camera_update(g);
 	t_rect p = {
@@ -565,6 +673,7 @@ int	ft_init_renderer(t_game *g)
 	}
 	ft_debug("Created window");
 	g->frame = mlx_new_image(g->mlx, WINDOW_W, WINDOW_H);
+	g->frame2 = mlx_new_image(g->mlx, WINDOW_W, WINDOW_H);
 	if (!g->frame)
 	{
 		ft_printf("\e[91m[ERR]\e[m Failed to generate frame\n");
@@ -583,7 +692,7 @@ int	ft_init_renderer(t_game *g)
 	return (0);
 }
 
-void generate_map(t_game *g, unsigned int seed)
+void	generate_map(t_game *g, unsigned int seed)
 {
 	ft_printf("\e[95m[DBG]\e[m Seed %i\n", seed);
 	for (int y = 0; y < g->opt.map_height; y++) {
@@ -630,7 +739,7 @@ void generate_map(t_game *g, unsigned int seed)
 	}
 }
 
-void print_map(t_game *g) {
+void	print_map(t_game *g) {
 	for (int y = 0; y < g->opt.map_height; y++) {
 		for (int x = 0; x < g->opt.map_width; x++) {
 			printf("%c", g->map_matrix[y][x]);

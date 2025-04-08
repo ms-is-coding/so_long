@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:13:32 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/07 16:28:01 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 17:38:45 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,6 +79,7 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_LOADING_12] = "assets/loading_12.xpm",
 [TEX_LOADING_13] = "assets/loading_13.xpm",
 [TEX_COLLECTIBLE] = "assets/collectible.xpm",
+[TEX_FONT] = "assets/font.xpm"
 };
 
 static char	g_texture_lookup[0x100] = {

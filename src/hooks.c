@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/07 15:49:48 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 01:25:11 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 20:22:18 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,8 @@ int	on_key_press(int keysym, t_game *g)
 		if (g->state.scene == SCENE_PAUSE_MENU)
 			g->state.scene = SCENE_LEVEL;
 		else if (g->state.scene == SCENE_LEVEL)
+			g->state.scene = SCENE_PAUSE_MENU;
+		else if (g->state.scene == SCENE_OPTIONS_MENU)
 			g->state.scene = SCENE_PAUSE_MENU;
 	}
 	if (keysym == XK_a || keysym == XK_Left)
@@ -74,6 +76,13 @@ int	on_mouse_up(int button, int x, int y, t_game *g)
 	return (0);
 }
 
+int	on_mouse_move(int x, int y, t_game *g)
+{
+	g->input.mouse.x = x;
+	g->input.mouse.y = y;
+	return (0);
+}
+
 int	ft_register_hooks(t_game *g)
 {
 	mlx_hook(g->win, KeyPress, KeyPressMask, on_key_press, g);
@@ -81,5 +90,6 @@ int	ft_register_hooks(t_game *g)
 	mlx_hook(g->win, DestroyNotify, 0, on_destroy, g);
 	mlx_hook(g->win, ButtonPress, ButtonPressMask, on_mouse_down, g);
 	mlx_hook(g->win, ButtonRelease, ButtonReleaseMask, on_mouse_up, g);
+	mlx_hook(g->win, MotionNotify, PointerMotionMask, on_mouse_move, g);
 	return (0);
 }
