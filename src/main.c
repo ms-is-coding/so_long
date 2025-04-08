@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 20:20:48 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 23:37:58 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -488,6 +488,31 @@ void	void_click(t_game *g)
 	(void)g;
 }
 
+void	fps_click(t_game *g)
+{
+	if (g->opt.fps == 60)
+		g->opt.fps = 120;
+	else if (g->opt.fps == 120)
+		g->opt.fps = 30;
+	else
+		g->opt.fps = 60;
+}
+
+void	gvt_click(t_game *g)
+{
+	if (g->opt.gravity == 0.2f)
+		g->opt.gravity = 0.4f;
+	else if (g->opt.gravity == 0.4f)
+		g->opt.gravity = 0.1f;
+	else
+		g->opt.gravity = 0.2f;
+}
+
+void	dbg_click(t_game *g)
+{
+	g->debug_mode ^= 1;
+}
+
 static bool blur_rendered = false;
 
 void	render_blur(t_game *g)
@@ -507,9 +532,21 @@ void	render_blur(t_game *g)
 
 int	render_menu(t_game *g)
 {
-	new_button(g, "start game", (t_point){ 100, 150 }, start_click);
+	new_button(g, "start game", (t_point){ 100, 100 }, start_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
+}
+
+const char *get_gvt_preset(t_game *g)
+{
+	if (g->opt.gravity == 0.2f)
+		return "normal";
+	else if (g->opt.gravity == 0.4f)
+		return "high";
+	else if (g->opt.gravity == 0.1f)
+		return "low";
+	else
+		return "(error)";
 }
 
 int	render_options_menu(t_game *g)
@@ -518,8 +555,19 @@ int	render_options_menu(t_game *g)
 	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
 		ft_transform_ignore_alpha);
 	ft_image_to_vbuffer(g, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H });
-	new_button(g, "---", (t_point){ 100, 150 }, void_click);
-	new_button(g, "return", (t_point){ 100, 200 }, pause_click);
+	char	fps_text[20];
+	char	gvt_text[24];
+	char	res_text[24];
+	char	dbg_text[20];
+	ft_snprintf(fps_text, 20, "fps        - %i", g->opt.fps);
+	ft_snprintf(gvt_text, 24, "gravity    - %s", get_gvt_preset(g));
+	ft_snprintf(dbg_text, 20, "hitboxes   - %s", g->debug_mode ? "on" : "off");
+	ft_snprintf(res_text, 24, "resolution - %i x %i", g->window.w, g->window.h);
+	new_button(g, fps_text, (t_point){ 100, 100 }, fps_click);
+	new_button(g, gvt_text, (t_point){ 100, 150 }, gvt_click);
+	new_button(g, dbg_text, (t_point){ 100, 200 }, dbg_click);
+	new_button(g, res_text, (t_point){ 100, 250 }, void_click);
+	new_button(g, "return", (t_point){ 100, 350 }, pause_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }
@@ -529,8 +577,8 @@ int	render_pause_menu(t_game *g)
 	render_blur(g);
 	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
 		ft_transform_ignore_alpha);
-	new_button(g, "resume", (t_point){ 100, 150 }, resume_click);
-	new_button(g, "options", (t_point){ 100, 200 }, options_click);
+	new_button(g, "resume", (t_point){ 100, 100 }, resume_click);
+	new_button(g, "options", (t_point){ 100, 150 }, options_click);
 	new_button(g, "exit", (t_point){ 100, 250 }, exit_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);

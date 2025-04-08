@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/07 15:49:48 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 20:22:18 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 23:38:13 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,8 +35,6 @@ int	on_key_press(int keysym, t_game *g)
 		return (0);
 	if (keysym == XK_w || keysym == XK_Up || keysym == XK_space)
 		g->state.should_jump = 1;
-	if (keysym == XK_g)
-		g->debug_mode ^= 1;
 	if (keysym == XK_Shift_L || keysym == XK_Shift_R)
 		g->state.should_dash = g->opt.dash_frames;
 	return (0);

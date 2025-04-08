@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 17:58:16 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/08 23:19:41 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -159,7 +159,7 @@ typedef struct s_game
 		float	dash_multiplier;
 		float	dash_frames;
 		float	collision_offset;
-		float	fps;
+		int		fps;
 		int		map_width;
 		int		map_height;
 	}	opt;
