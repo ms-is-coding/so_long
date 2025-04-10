@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 23:37:58 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/10 17:04:34 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -243,6 +243,28 @@ void	ft_collision_y(t_game *g, struct s_player *p)
 	}
 }
 
+void	ft_collect_item(t_game *g)
+{
+	int	x0 = g->player.x / TILE_SIZE;
+	int	x1 = (g->player.x + g->player.w) / TILE_SIZE;
+	int	y0 = g->player.y / TILE_SIZE;
+	int y1 = (g->player.y + g->player.h) / TILE_SIZE;
+
+	for (int y = y0; y <= y1; y++) {
+		for (int x = x0; x <= x1; x++) {
+			if (g->map_matrix[y][x] == 'C') {
+				t_hitbox hitbox = ft_absolute_hitbox(g, x, y);
+				if (g->player.x + g->player.w / 2 < hitbox.l
+					|| g->player.y + g->player.h / 2 < hitbox.t
+					|| g->player.x + g->player.w / 2 > hitbox.r
+					|| g->player.y + g->player.h / 2 > hitbox.b)
+					continue ;
+				g->map_matrix[y][x] = '0';
+			}
+		}
+	}
+}
+
 void	ft_player_update(t_game *g)
 {
 	struct s_player	*p;
@@ -270,6 +292,7 @@ void	ft_player_update(t_game *g)
 	p->py = p->y;
 	p->y += p->vy;
 	ft_collision_y(g, p);
+	ft_collect_item(g);
 }
 
 void	ft_image_transform(t_game *g, void *dst, void *src, t_rect p,
@@ -363,8 +386,9 @@ void	draw_char(t_game *g, t_point pos, char c, int color)
 
 	for (int j = 0; j < 30; j++) {
 		for (int i = 0; i < 30; i++) {
+			int idx = (pos.y + j) * g->window.w + pos.x + i;
 			if (fg[(y_offset + j) * 480 + x_offset + i] == 0xffffff)
-				bg[(pos.y + j) * g->window.w + pos.x + i] = color;
+				bg[idx] = blend_pixel_fast(color, bg[idx]);
 		}
 	}
 }
@@ -397,36 +421,27 @@ uint32_t	ft_transform_gaussian_blur(t_game *game, uint32_t *buf, t_rect p)
 		for (int dx = -2; dx <= 2; dx++) {
 			int sample_x = p.x + dx;
 			int sample_y = p.y + dy;
-
-			// Clamp sample coordinates to the image boundaries
 			if (sample_x < 0)
 				sample_x = 0;
 			else if (sample_x >= p.w)
 				sample_x = p.w - 1;
-
 			if (sample_y < 0)
 				sample_y = 0;
 			else if (sample_y >= p.h)
 				sample_y = p.h - 1;
-
 			uint32_t pixel = buf[sample_y * p.w + sample_x];
-
-			// Extract color components
 			int r = (pixel >> 16) & 0xFF;
 			int g = (pixel >> 8) & 0xFF;
 			int b = pixel & 0xFF;
-
 			int weight = kernel[dy + 2][dx + 2];
 			sum_r += r * weight;
 			sum_g += g * weight;
 			sum_b += b * weight;
 		}
 	}
-
 	sum_r >>= 8;
 	sum_g >>= 8;
 	sum_b >>= 8;
-
 	return (sum_r << 16) | (sum_g << 8) | sum_b;
 }
 
@@ -453,7 +468,8 @@ void	new_button(t_game *g, const char *text, t_point btn, void (*on_click)(t_gam
 		clicked = true;
 	if (is_inside && clicked && !mouse.left)
 	{
-		on_click(g);
+		if (on_click)
+			on_click(g);
 		clicked = false;
 	}
 }
@@ -483,11 +499,6 @@ void	pause_click(t_game *g)
 	g->state.scene = SCENE_PAUSE_MENU;
 }
 
-void	void_click(t_game *g)
-{
-	(void)g;
-}
-
 void	fps_click(t_game *g)
 {
 	if (g->opt.fps == 60)
@@ -513,6 +524,11 @@ void	dbg_click(t_game *g)
 	g->debug_mode ^= 1;
 }
 
+void	menu_click(t_game *g)
+{
+	g->state.scene = SCENE_MAIN_MENU;
+}
+
 static bool blur_rendered = false;
 
 void	render_blur(t_game *g)
@@ -527,12 +543,50 @@ void	render_blur(t_game *g)
 	ft_image_transform(g, g->frame2, g->frame, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
 		ft_transform_gaussian_blur);
 	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
-		ft_transform_gaussian_blur);
+		ft_transform_ignore_alpha);
+}
+
+void	render_game_name(t_game *g)
+{
+	const char *name = "so long";
+	const char *start = name;
+	while (*name)
+	{
+		draw_char(g, (t_point){ 30 + 30 * (name - start), 30 }, *name, 0x8080cc);
+		name++;
+	}
+	name = "v0.0.2";
+	start = name;
+	while (*name)
+	{
+		draw_char(g, (t_point){ 330 + 30 * (name - start), 30 }, *name, 0xc0ffffff);
+		name++;
+	}
 }
 
 int	render_menu(t_game *g)
 {
-	new_button(g, "start game", (t_point){ 100, 100 }, start_click);
+	ft_camera_update(g);
+	t_rect p = {
+		-g->window.x * PARALLAX_CONSTANT,
+		-g->window.y * PARALLAX_CONSTANT,
+		g->map.w * PARALLAX_CONSTANT + g->window.w * PARALLAX_CONSTANT * 0.25,
+		g->map.h * PARALLAX_CONSTANT + g->window.h * PARALLAX_CONSTANT * 0.25,
+	};
+	ft_image_to_vbuffer(g, g->parallaxes[0], p);
+	ft_render_map(g);
+	ft_render_player(g);
+	if (g->debug_mode)
+		render_hitboxes(g);
+	render_blur(g);
+	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+		ft_transform_ignore_alpha);
+	render_game_name(g);
+	new_button(g, "continue", (t_point){100, 200}, start_click);
+	new_button(g, "new game", (t_point){ 100, 250 }, NULL);
+	new_button(g, "options", (t_point){ 100, 300 }, NULL);
+	new_button(g, "credits", (t_point){ 100, 350 }, NULL);
+	new_button(g, "quit", (t_point){ 100, 450 }, exit_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }
@@ -563,11 +617,12 @@ int	render_options_menu(t_game *g)
 	ft_snprintf(gvt_text, 24, "gravity    - %s", get_gvt_preset(g));
 	ft_snprintf(dbg_text, 20, "hitboxes   - %s", g->debug_mode ? "on" : "off");
 	ft_snprintf(res_text, 24, "resolution - %i x %i", g->window.w, g->window.h);
-	new_button(g, fps_text, (t_point){ 100, 100 }, fps_click);
-	new_button(g, gvt_text, (t_point){ 100, 150 }, gvt_click);
-	new_button(g, dbg_text, (t_point){ 100, 200 }, dbg_click);
-	new_button(g, res_text, (t_point){ 100, 250 }, void_click);
-	new_button(g, "return", (t_point){ 100, 350 }, pause_click);
+	render_game_name(g);
+	new_button(g, fps_text, (t_point){ 100, 200 }, fps_click);
+	new_button(g, gvt_text, (t_point){ 100, 250 }, gvt_click);
+	new_button(g, dbg_text, (t_point){ 100, 300 }, dbg_click);
+	new_button(g, res_text, (t_point){ 100, 350 }, NULL);
+	new_button(g, "return", (t_point){ 100, 450 }, pause_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }
@@ -577,9 +632,10 @@ int	render_pause_menu(t_game *g)
 	render_blur(g);
 	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
 		ft_transform_ignore_alpha);
-	new_button(g, "resume", (t_point){ 100, 100 }, resume_click);
-	new_button(g, "options", (t_point){ 100, 150 }, options_click);
-	new_button(g, "exit", (t_point){ 100, 250 }, exit_click);
+	render_game_name(g);
+	new_button(g, "resume", (t_point){ 100, 200 }, resume_click);
+	new_button(g, "options", (t_point){ 100, 250 }, options_click);
+	new_button(g, "main menu", (t_point){ 100, 350 }, menu_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }

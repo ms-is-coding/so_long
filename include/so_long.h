@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 23:19:41 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/09 11:32:52 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -185,6 +185,7 @@ typedef struct s_game
 			SCENE_LEVEL,
 			SCENE_PAUSE_MENU,
 			SCENE_OPTIONS_MENU,
+			SCENE_CREDITS,
 		} scene;
 		uint8_t		should_dash;
 		uint8_t		should_jump;
