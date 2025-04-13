@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/13 22:53:35 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 23:06:30 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -682,7 +682,7 @@ void	render_blur(t_game *g)
 void	render_game_name(t_game *g)
 {
 	render_text(g, (t_point){ 30, 30 }, "so long", 0x8080cc);
-	render_text(g, (t_point){ 330, 30 }, "v0.0.3", 0xc0ffffff);
+	render_text(g, (t_point){ 330, 30 }, "v0.0.4", 0xc0ffffff);
 }
 
 int	render_menu(t_game *g)
@@ -726,7 +726,7 @@ int	render_credits(t_game *g)
 {
 	render_blur(g);
 	render_text(g, (t_point){ 495, 60 }, "so long", 0x8040ff);
-	render_text(g, (t_point){ 510, 110 }, "v0.0.3", 0xcccccc);
+	render_text(g, (t_point){ 510, 110 }, "v0.0.4", 0xcccccc);
 	render_text(g, (t_point){ 450, 210 }, "Developers", 0xffff00);
 	render_link(g, (struct s_link_render_options){ .hover_color = 0x0080ff,
 		.pos = { 420, 260 }, .label = "ms-is-coding",
