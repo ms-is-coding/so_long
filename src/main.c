@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/13 21:08:32 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 22:41:29 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -424,12 +424,39 @@ uint32_t	ft_transform_scale_down(t_game *game, uint32_t *buf, t_rect p)
 	return (alpha << 24) | (red << 16) | (green << 8) | blue;
 }
 
+int	get_animation_state(t_game *g)
+{
+	const float epsilon = 0.1;
+	static int walk = TEX_PLAYER_WALK_0;
+	static int idle = TEX_PLAYER_IDLE_0;
+	static int dash = TEX_PLAYER_DASH_0;
+	if (g->state.should_dash) {
+		idle = TEX_PLAYER_IDLE_0;
+		walk = TEX_PLAYER_WALK_0;
+		dash = dash == TEX_PLAYER_DASH_15 ? TEX_PLAYER_DASH_0 : dash + 1;
+		return dash;
+	} else if (g->player.vx > epsilon || g->player.vx < -epsilon) {
+		idle = TEX_PLAYER_IDLE_0;
+		dash = TEX_PLAYER_DASH_0;
+		if (g->state.frame_count % 6 == 0)
+			walk = walk == TEX_PLAYER_WALK_19 ? TEX_PLAYER_WALK_0 : walk + 1;
+		return walk;
+	} else {
+		walk = TEX_PLAYER_WALK_0;
+		dash = TEX_PLAYER_DASH_0;
+		if (g->state.frame_count % 6 == 0)
+			idle = idle == TEX_PLAYER_IDLE_19 ? TEX_PLAYER_IDLE_0 : idle + 1;
+		return idle;
+	}
+}
+
 void	ft_render_player(t_game *g)
 {
 	t_vector t = translate(g,
 		g->player.x - .5 * (TILE_SIZE - g->player.w),
 		g->player.y - .5 * (TILE_SIZE - g->player.h));
-	ft_image_transform(g, g->frame, g->textures[TEX_PLAYER], (t_rect){
+	int	tex = get_animation_state(g);
+	ft_image_transform(g, g->frame, g->textures[tex], (t_rect){
 		t.x, t.y, TILE_SIZE, TILE_SIZE }, ft_transform_mirror);
 }
 
@@ -668,8 +695,8 @@ int	render_menu(t_game *g)
 		g->map.h * PARALLAX_CONSTANT + g->window.h * PARALLAX_CONSTANT * 0.25,
 	};
 	ft_image_to_vbuffer(g, g->parallaxes[0], p);
-	ft_render_map(g);
 	ft_render_player(g);
+	ft_render_map(g);
 	if (g->debug_mode)
 		render_hitboxes(g);
 	render_blur(g);
@@ -795,8 +822,8 @@ int	render(t_game *g)
 		g->map.h * PARALLAX_CONSTANT + g->window.h * PARALLAX_CONSTANT * 0.25,
 	};
 	ft_image_to_vbuffer(g, g->parallaxes[0], p);
-	ft_render_map(g);
 	ft_render_player(g);
+	ft_render_map(g);
 	char buf[12];
 	ft_snprintf(buf, 12, "%i/%i", g->state.snacks_eaten, g->state.snack_count);
 	render_text(g, (t_point){10, 10}, buf, 0x80ffffff);

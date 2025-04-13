@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/13 12:20:33 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 22:37:43 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -126,6 +126,42 @@ enum
 	TEX_PLAYER_IDLE_17,
 	TEX_PLAYER_IDLE_18,
 	TEX_PLAYER_IDLE_19,
+	TEX_PLAYER_WALK_0,
+	TEX_PLAYER_WALK_1,
+	TEX_PLAYER_WALK_2,
+	TEX_PLAYER_WALK_3,
+	TEX_PLAYER_WALK_4,
+	TEX_PLAYER_WALK_5,
+	TEX_PLAYER_WALK_6,
+	TEX_PLAYER_WALK_7,
+	TEX_PLAYER_WALK_8,
+	TEX_PLAYER_WALK_9,
+	TEX_PLAYER_WALK_10,
+	TEX_PLAYER_WALK_11,
+	TEX_PLAYER_WALK_12,
+	TEX_PLAYER_WALK_13,
+	TEX_PLAYER_WALK_14,
+	TEX_PLAYER_WALK_15,
+	TEX_PLAYER_WALK_16,
+	TEX_PLAYER_WALK_17,
+	TEX_PLAYER_WALK_18,
+	TEX_PLAYER_WALK_19,
+	TEX_PLAYER_DASH_0,
+	TEX_PLAYER_DASH_1,
+	TEX_PLAYER_DASH_2,
+	TEX_PLAYER_DASH_3,
+	TEX_PLAYER_DASH_4,
+	TEX_PLAYER_DASH_5,
+	TEX_PLAYER_DASH_6,
+	TEX_PLAYER_DASH_7,
+	TEX_PLAYER_DASH_8,
+	TEX_PLAYER_DASH_9,
+	TEX_PLAYER_DASH_10,
+	TEX_PLAYER_DASH_11,
+	TEX_PLAYER_DASH_12,
+	TEX_PLAYER_DASH_13,
+	TEX_PLAYER_DASH_14,
+	TEX_PLAYER_DASH_15,
 	TEX_EXIT,
 	TEX_LOADING_0,
 	TEX_LOADING_1,
@@ -223,6 +259,7 @@ typedef struct s_game
 		int			snack_count;
 		int			snacks_eaten;
 		int			move_count;
+		int			player_animation_state;
 	}	state;
 	struct s_time
 	{

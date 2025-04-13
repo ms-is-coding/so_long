@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:13:32 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/13 11:23:51 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 22:38:26 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -83,6 +83,42 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_PLAYER_IDLE_17] = "assets/player_idle_17.xpm",
 [TEX_PLAYER_IDLE_18] = "assets/player_idle_18.xpm",
 [TEX_PLAYER_IDLE_19] = "assets/player_idle_19.xpm",
+[TEX_PLAYER_WALK_0] = "assets/player_walk_0.xpm",
+[TEX_PLAYER_WALK_1] = "assets/player_walk_1.xpm",
+[TEX_PLAYER_WALK_2] = "assets/player_walk_2.xpm",
+[TEX_PLAYER_WALK_3] = "assets/player_walk_3.xpm",
+[TEX_PLAYER_WALK_4] = "assets/player_walk_4.xpm",
+[TEX_PLAYER_WALK_5] = "assets/player_walk_5.xpm",
+[TEX_PLAYER_WALK_6] = "assets/player_walk_6.xpm",
+[TEX_PLAYER_WALK_7] = "assets/player_walk_7.xpm",
+[TEX_PLAYER_WALK_8] = "assets/player_walk_8.xpm",
+[TEX_PLAYER_WALK_9] = "assets/player_walk_9.xpm",
+[TEX_PLAYER_WALK_10] = "assets/player_walk_10.xpm",
+[TEX_PLAYER_WALK_11] = "assets/player_walk_11.xpm",
+[TEX_PLAYER_WALK_12] = "assets/player_walk_12.xpm",
+[TEX_PLAYER_WALK_13] = "assets/player_walk_13.xpm",
+[TEX_PLAYER_WALK_14] = "assets/player_walk_14.xpm",
+[TEX_PLAYER_WALK_15] = "assets/player_walk_15.xpm",
+[TEX_PLAYER_WALK_16] = "assets/player_walk_16.xpm",
+[TEX_PLAYER_WALK_17] = "assets/player_walk_17.xpm",
+[TEX_PLAYER_WALK_18] = "assets/player_walk_18.xpm",
+[TEX_PLAYER_WALK_19] = "assets/player_walk_19.xpm",
+[TEX_PLAYER_DASH_0] = "assets/player_dash_0.xpm",
+[TEX_PLAYER_DASH_1] = "assets/player_dash_1.xpm",
+[TEX_PLAYER_DASH_2] = "assets/player_dash_2.xpm",
+[TEX_PLAYER_DASH_3] = "assets/player_dash_3.xpm",
+[TEX_PLAYER_DASH_4] = "assets/player_dash_4.xpm",
+[TEX_PLAYER_DASH_5] = "assets/player_dash_5.xpm",
+[TEX_PLAYER_DASH_6] = "assets/player_dash_6.xpm",
+[TEX_PLAYER_DASH_7] = "assets/player_dash_7.xpm",
+[TEX_PLAYER_DASH_8] = "assets/player_dash_8.xpm",
+[TEX_PLAYER_DASH_9] = "assets/player_dash_9.xpm",
+[TEX_PLAYER_DASH_10] = "assets/player_dash_10.xpm",
+[TEX_PLAYER_DASH_11] = "assets/player_dash_11.xpm",
+[TEX_PLAYER_DASH_12] = "assets/player_dash_12.xpm",
+[TEX_PLAYER_DASH_13] = "assets/player_dash_13.xpm",
+[TEX_PLAYER_DASH_14] = "assets/player_dash_14.xpm",
+[TEX_PLAYER_DASH_15] = "assets/player_dash_15.xpm",
 [TEX_EXIT] = "assets/exit.xpm",
 [TEX_LOADING_0] = "assets/loading_00.xpm",
 [TEX_LOADING_1] = "assets/loading_01.xpm",
@@ -397,7 +433,7 @@ static int	ft_load_texture(t_game *g, char *name, int index)
 	image = mlx_xpm_file_to_image(g->mlx, name, &width, &height);
 	if (!image)
 	{
-		ft_printf("\e[91m[ERR]\e[0m Failed to load texture \'%s\'\n", name);
+		ft_printf("\e[91m[ERR]\e[m Failed to load texture \'%s\'\n", name);
 		return (1);
 	}
 	g->textures[index] = image;
@@ -409,6 +445,7 @@ int	ft_load_textures(t_game *g)
 	int	index;
 
 	index = 0;
+	ft_printf("\e[95m[DBG]\e[m Loading %i textures\n", TEX_COUNT);
 	while (index < TEX_COUNT)
 	{
 		if (ft_load_texture(g, g_texture_files[index], index))
