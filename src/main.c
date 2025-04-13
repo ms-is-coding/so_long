@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/13 22:41:29 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 22:53:35 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1023,20 +1023,12 @@ void	generate_map(t_game *g, t_random *rand)
 	generate_map(g, rand);
 }
 
-void *ft_gl_init();
-int ft_gl_pixel_put(void *gl, int x, int y, int color);
-int ft_gl_clear(void *gl);
-
 void	print_map(t_game *g) {
-	void *gl = ft_gl_init();
-	ft_gl_clear(gl);
 	for (int y = 0; y < g->opt.map_height; y++) {
 		for (int x = 0; x < g->opt.map_width; x++) {
-			//printf("%c", g->map_matrix[y][x]);
-			if (g->map_matrix[y][x] != '1')
-				ft_gl_pixel_put(gl, x, y, 0xffffff);
+			printf("%c", g->map_matrix[y][x]);
 		}
-		//printf("\n");
+		printf("\n");
 	}
 }
 
@@ -1075,7 +1067,7 @@ int	main(int argc, char *argv[])
 	ft_printf("\e[94m[INF]\e[m Starting game\n");
 	g.state.is_running = 1;
 	generate_map(&g, &rand);
-	print_map(&g);
+	// print_map(&g);
 	if (ft_init_renderer(&g))
 	{
 		cleanup(&g);

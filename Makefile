@@ -6,7 +6,7 @@
 #    By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/13 20:22:30 by smamalig          #+#    #+#              #
-#    Updated: 2025/04/13 12:50:21 by smamalig         ###   ########.fr        #
+#    Updated: 2025/04/13 22:53:15 by smamalig         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,7 +28,7 @@ LIBMLX         = mlx
 LIBMLX_FLAGS   = -Llibmlx -lmlx -lXext -lX11
 LIBMLX_DIR     = ./libmlx
 
-LDFLAGS        = $(LIBFT_FLAGS) $(LIBMLX_FLAGS) -L../ft_gl -lft_gl
+LDFLAGS        = $(LIBFT_FLAGS) $(LIBMLX_FLAGS)
 
 RED            = \e[31m
 GREEN          = \e[32m
