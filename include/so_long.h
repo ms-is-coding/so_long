@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/09 11:32:52 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 12:20:33 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,6 +106,26 @@ enum
 	TEX_DIAG_TLBR,
 	TEX_DIAG_TRBL,
 	TEX_PLAYER,
+	TEX_PLAYER_IDLE_0,
+	TEX_PLAYER_IDLE_1,
+	TEX_PLAYER_IDLE_2,
+	TEX_PLAYER_IDLE_3,
+	TEX_PLAYER_IDLE_4,
+	TEX_PLAYER_IDLE_5,
+	TEX_PLAYER_IDLE_6,
+	TEX_PLAYER_IDLE_7,
+	TEX_PLAYER_IDLE_8,
+	TEX_PLAYER_IDLE_9,
+	TEX_PLAYER_IDLE_10,
+	TEX_PLAYER_IDLE_11,
+	TEX_PLAYER_IDLE_12,
+	TEX_PLAYER_IDLE_13,
+	TEX_PLAYER_IDLE_14,
+	TEX_PLAYER_IDLE_15,
+	TEX_PLAYER_IDLE_16,
+	TEX_PLAYER_IDLE_17,
+	TEX_PLAYER_IDLE_18,
+	TEX_PLAYER_IDLE_19,
 	TEX_EXIT,
 	TEX_LOADING_0,
 	TEX_LOADING_1,
@@ -121,7 +141,14 @@ enum
 	TEX_LOADING_11,
 	TEX_LOADING_12,
 	TEX_LOADING_13,
-	TEX_COLLECTIBLE,
+	TEX_SNACK_0,
+	TEX_SNACK_1,
+	TEX_SNACK_2,
+	TEX_SNACK_3,
+	TEX_SNACK_4,
+	TEX_SNACK_5,
+	TEX_SNACK_6,
+	TEX_SNACK_7,
 	TEX_FONT,
 	TEX_COUNT
 };
@@ -185,6 +212,7 @@ typedef struct s_game
 			SCENE_LEVEL,
 			SCENE_PAUSE_MENU,
 			SCENE_OPTIONS_MENU,
+			SCENE_MAIN_OPTIONS_MENU,
 			SCENE_CREDITS,
 		} scene;
 		uint8_t		should_dash;
@@ -192,6 +220,9 @@ typedef struct s_game
 		atomic_int	is_running;
 		atomic_int	frame_count;
 		atomic_int	should_render;
+		int			snack_count;
+		int			snacks_eaten;
+		int			move_count;
 	}	state;
 	struct s_time
 	{
@@ -201,12 +232,13 @@ typedef struct s_game
 		float	frame_delta;
 		float	frame_last;
 	}	time;
-	int			debug_mode;
+	bool		debug_mode;
 	t_rect		window;
 	t_rect		map;
 	char		**map_matrix;
 }	t_game;
 
+void		generate_map(t_game *g, t_random *rand);
 int			ft_render_map(t_game *g);
 int			ft_generate_background(t_game *g);
 int			ft_load_textures(t_game *g);

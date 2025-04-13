@@ -6,13 +6,13 @@
 #    By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/02/13 20:22:30 by smamalig          #+#    #+#              #
-#    Updated: 2025/04/07 18:30:47 by smamalig         ###   ########.fr        #
+#    Updated: 2025/04/13 12:50:21 by smamalig         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME           = so_long
 CC             = cc
-CFLAGS         = -Wall -Wextra -Werror -O3 -g3
+CFLAGS         = -Wall -Wextra -O3 -g3
 SRC_FILES      = main.c textures.c hitbox.c threads.c options.c hooks.c
 SRCS           = $(addprefix src/, $(SRC_FILES))
 OBJ_DIR        = obj
@@ -28,7 +28,7 @@ LIBMLX         = mlx
 LIBMLX_FLAGS   = -Llibmlx -lmlx -lXext -lX11
 LIBMLX_DIR     = ./libmlx
 
-LDFLAGS        = $(LIBFT_FLAGS) $(LIBMLX_FLAGS)
+LDFLAGS        = $(LIBFT_FLAGS) $(LIBMLX_FLAGS) -L../ft_gl -lft_gl
 
 RED            = \e[31m
 GREEN          = \e[32m

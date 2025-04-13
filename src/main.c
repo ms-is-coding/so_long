@@ -6,10 +6,11 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/10 17:04:34 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 21:08:32 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "libft.h"
 #include "mlx_int.h"
 #include "so_long.h"
 #include "mlx.h"
@@ -134,9 +135,11 @@ void	render_hitboxes(t_game *g)
 			int mask = compute_texture_mask(g, x, y);
 			int tex_idx = get_texture_index(mask);
 			if (g->map_matrix[y][x] == 'C')
-				render_hitbox(g, TEX_COLLECTIBLE, x, y);
+				render_hitbox(g, TEX_SNACK_0, x, y);
 			else if (g->map_matrix[y][x] == '1')
 				render_hitbox(g, tex_idx, x, y);
+			else if (g->map_matrix[y][x] == 'E')
+				render_hitbox(g, TEX_EXIT, x, y);
 		}
 	}
 	player_hitbox(g);
@@ -252,17 +255,39 @@ void	ft_collect_item(t_game *g)
 
 	for (int y = y0; y <= y1; y++) {
 		for (int x = x0; x <= x1; x++) {
+			t_hitbox hitbox = ft_absolute_hitbox(g, x, y);
+			if (g->player.x + .5 * g->player.w < hitbox.l
+				|| g->player.y + .5 * g->player.h < hitbox.t
+				|| g->player.x + .5 * g->player.w > hitbox.r
+				|| g->player.y + .5 * g->player.h > hitbox.b)
+				continue ;
 			if (g->map_matrix[y][x] == 'C') {
-				t_hitbox hitbox = ft_absolute_hitbox(g, x, y);
-				if (g->player.x + g->player.w / 2 < hitbox.l
-					|| g->player.y + g->player.h / 2 < hitbox.t
-					|| g->player.x + g->player.w / 2 > hitbox.r
-					|| g->player.y + g->player.h / 2 > hitbox.b)
-					continue ;
+				g->state.snacks_eaten++;
 				g->map_matrix[y][x] = '0';
+			}
+			if (g->map_matrix[y][x] == 'E' && g->state.snacks_eaten == g->state.snack_count) {
+				t_random rand = ft_srand(ft_time(NULL));
+				generate_map(g, &rand);
 			}
 		}
 	}
+}
+
+void	render_text(t_game *g, t_point pos, const char *text, int color);
+
+void	ft_print_movement(t_game *g)
+{
+	const int	px = (g->player.px + .5 * g->player.w) / TILE_SIZE;
+	const int	py = (g->player.py + .5 * g->player.h) / TILE_SIZE;
+	const int	cx = (g->player.x + .5 * g->player.w) / TILE_SIZE;
+	const int	cy = (g->player.y + .5 * g->player.h) / TILE_SIZE;
+
+	char buf[16];
+	ft_snprintf(buf, 16, "%i moves", g->state.move_count);
+	render_text(g, (t_point){1190 - 30 * ft_strlen(buf), 10}, buf, 0x80ffffff);
+	if (px == cx && py == cy)
+		return ;
+	g->state.move_count++;
 }
 
 void	ft_player_update(t_game *g)
@@ -298,7 +323,7 @@ void	ft_player_update(t_game *g)
 void	ft_image_transform(t_game *g, void *dst, void *src, t_rect p,
 	uint32_t (*transform)(t_game *g, uint32_t *buf, t_rect p))
 {
-	int	_;
+	int		_;
 	void	*bg = mlx_get_data_addr(dst, &_, &_, &_);
 	void	*fg = mlx_get_data_addr(src, &_, &_, &_);
 
@@ -366,6 +391,39 @@ uint32_t	ft_transform_mirror(t_game *g, uint32_t *buf, t_rect p)
 	return buf[p.y * p.w + p.x];
 }
 
+uint32_t	ft_transform_scale_down(t_game *game, uint32_t *buf, t_rect p)
+{
+	(void)game;
+	const int src_width = 64;
+	float src_x = p.x * (64.0f / 48.0f);
+	float src_y = p.y * (64.0f / 48.0f);
+	int x0 = src_x;
+	int y0 = src_y;
+	int x1 = src_x + 1;
+	int y1 = src_y + 1;
+	x1 = (x1 >= 64) ? 63 : x1;
+	y1 = (y1 >= 64) ? 63 : y1;
+	float dx = src_x - x0;
+	float dy = src_y - y0;
+	uint32_t px00 = buf[y0 * src_width + x0];
+	uint32_t px01 = buf[y0 * src_width + x1];
+	uint32_t px10 = buf[y1 * src_width + x0];
+	uint32_t px11 = buf[y1 * src_width + x1];
+	#define INTERP_CHANNEL(channel, shift) \
+		( (1 - dy) * ( (1 - dx) * ((px00 >> shift) & 0xFF) + dx * ((px01 >> shift) & 0xFF) ) + \
+		dy * ( (1 - dx) * ((px10 >> shift) & 0xFF) + dx * ((px11 >> shift) & 0xFF) ) )
+	float a = INTERP_CHANNEL(24, 24);
+	float r = INTERP_CHANNEL(16, 16);
+	float g = INTERP_CHANNEL(8, 8);
+	float b = INTERP_CHANNEL(0, 0);
+	uint8_t alpha = (uint8_t)(a + 0.5f);
+	uint8_t red   = (uint8_t)(r + 0.5f);
+	uint8_t green = (uint8_t)(g + 0.5f);
+	uint8_t blue  = (uint8_t)(b + 0.5f);
+
+	return (alpha << 24) | (red << 16) | (green << 8) | blue;
+}
+
 void	ft_render_player(t_game *g)
 {
 	t_vector t = translate(g,
@@ -381,6 +439,10 @@ void	draw_char(t_game *g, t_point pos, char c, int color)
 	uint32_t	*bg = (uint32_t *)mlx_get_data_addr(g->frame, &_, &_, &_);
 	uint32_t	*fg = (uint32_t *)mlx_get_data_addr(g->textures[TEX_FONT], &_, &_, &_);
 
+	// 00101010
+	// 00001111
+	// 00001010
+
 	int x_offset = (c & 0xf) * 30;
 	int y_offset = ((c >> 4) - 2) * 30;
 
@@ -393,11 +455,11 @@ void	draw_char(t_game *g, t_point pos, char c, int color)
 	}
 }
 
-void	render_button(t_game *g, t_point btn, const char *text, int color)
+void	render_text(t_game *g, t_point pos, const char *text, int color)
 {
 	int i = 0;
 	while (*text) {
-		draw_char(g, (t_point){ btn.x + i, btn.y }, *text, color);
+		draw_char(g, (t_point){ pos.x + i, pos.y }, *text, color);
 		i += 30;
 		text++;
 	}
@@ -432,7 +494,7 @@ uint32_t	ft_transform_gaussian_blur(t_game *game, uint32_t *buf, t_rect p)
 			uint32_t pixel = buf[sample_y * p.w + sample_x];
 			int r = (pixel >> 16) & 0xFF;
 			int g = (pixel >> 8) & 0xFF;
-			int b = pixel & 0xFF;
+			int b = (pixel >> 0) & 0xFF;
 			int weight = kernel[dy + 2][dx + 2];
 			sum_r += r * weight;
 			sum_g += g * weight;
@@ -463,13 +525,40 @@ void	new_button(t_game *g, const char *text, t_point btn, void (*on_click)(t_gam
 	struct s_mouse mouse = g->input.mouse;
 	bool is_inside = mouse.x > btn.x && mouse.x <= btn.x + 30 * (int)ft_strlen(text)
 		&& mouse.y >= btn.y && mouse.y <= btn.y + 30;
-	render_button(g, btn, text, is_inside ? 0x80ff00 : 0xffffff);
+	render_text(g, btn, text, is_inside ? 0x80ff00 : 0xffffff);
 	if (is_inside && mouse.left)
 		clicked = true;
 	if (is_inside && clicked && !mouse.left)
 	{
 		if (on_click)
 			on_click(g);
+		clicked = false;
+	}
+}
+
+struct	s_link_render_options
+{
+	const char	*url;
+	const char	*label;
+	t_point		pos;
+	int			color;
+	int			hover_color;
+};
+
+void	render_link(t_game *g, struct s_link_render_options opt)
+{
+	static bool clicked = false;
+	struct s_mouse mouse = g->input.mouse;
+	bool is_inside = mouse.x > opt.pos.x && opt.pos.x <= opt.pos.x + 30 * (int)ft_strlen(opt.label)
+		&& mouse.y >= opt.pos.y && mouse.y <= opt.pos.y + 30;
+	render_text(g, opt.pos, opt.label, is_inside ? opt.hover_color : opt.color);
+	if (is_inside && mouse.left)
+		clicked = true;
+	char command[0xff];
+	ft_snprintf(command, 0xff, "xdg-open %s", opt.url);
+	if (is_inside && clicked && !mouse.left)
+	{
+		system(command);
 		clicked = false;
 	}
 }
@@ -489,6 +578,11 @@ void	options_click(t_game *g)
 	g->state.scene = SCENE_OPTIONS_MENU;
 }
 
+void	main_options_click(t_game *g)
+{
+	g->state.scene = SCENE_MAIN_OPTIONS_MENU;
+}
+
 void	exit_click(t_game *g)
 {
 	on_destroy(g);
@@ -497,6 +591,11 @@ void	exit_click(t_game *g)
 void	pause_click(t_game *g)
 {
 	g->state.scene = SCENE_PAUSE_MENU;
+}
+
+void	credits_click(t_game *g)
+{
+	g->state.scene = SCENE_CREDITS;
 }
 
 void	fps_click(t_game *g)
@@ -529,39 +628,34 @@ void	menu_click(t_game *g)
 	g->state.scene = SCENE_MAIN_MENU;
 }
 
+void	new_game_click(t_game *g)
+{
+	t_random rand = ft_srand(ft_time(NULL));
+	generate_map(g, &rand);
+	g->state.scene = SCENE_LEVEL;
+}
+
 static bool blur_rendered = false;
 
 void	render_blur(t_game *g)
 {
-	if (blur_rendered)
-		return ;
-	blur_rendered = true;
-	ft_image_transform(g, g->frame2, g->frame, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
-		ft_transform_gaussian_blur);
-	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
-		ft_transform_gaussian_blur);
-	ft_image_transform(g, g->frame2, g->frame, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
-		ft_transform_gaussian_blur);
+	if (!blur_rendered) {
+		blur_rendered = true;
+		ft_image_transform(g, g->frame2, g->frame, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+			ft_transform_gaussian_blur);
+		ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+			ft_transform_gaussian_blur);
+		ft_image_transform(g, g->frame2, g->frame, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
+			ft_transform_gaussian_blur);
+	}
 	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
 		ft_transform_ignore_alpha);
 }
 
 void	render_game_name(t_game *g)
 {
-	const char *name = "so long";
-	const char *start = name;
-	while (*name)
-	{
-		draw_char(g, (t_point){ 30 + 30 * (name - start), 30 }, *name, 0x8080cc);
-		name++;
-	}
-	name = "v0.0.2";
-	start = name;
-	while (*name)
-	{
-		draw_char(g, (t_point){ 330 + 30 * (name - start), 30 }, *name, 0xc0ffffff);
-		name++;
-	}
+	render_text(g, (t_point){ 30, 30 }, "so long", 0x8080cc);
+	render_text(g, (t_point){ 330, 30 }, "v0.0.3", 0xc0ffffff);
 }
 
 int	render_menu(t_game *g)
@@ -579,13 +673,11 @@ int	render_menu(t_game *g)
 	if (g->debug_mode)
 		render_hitboxes(g);
 	render_blur(g);
-	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
-		ft_transform_ignore_alpha);
 	render_game_name(g);
 	new_button(g, "continue", (t_point){100, 200}, start_click);
-	new_button(g, "new game", (t_point){ 100, 250 }, NULL);
-	new_button(g, "options", (t_point){ 100, 300 }, NULL);
-	new_button(g, "credits", (t_point){ 100, 350 }, NULL);
+	new_button(g, "new game", (t_point){ 100, 250 }, new_game_click);
+	new_button(g, "options", (t_point){ 100, 300 }, main_options_click);
+	new_button(g, "credits", (t_point){ 100, 350 }, credits_click);
 	new_button(g, "quit", (t_point){ 100, 450 }, exit_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
@@ -603,26 +695,65 @@ const char *get_gvt_preset(t_game *g)
 		return "(error)";
 }
 
-int	render_options_menu(t_game *g)
+int	render_credits(t_game *g)
 {
 	render_blur(g);
-	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
-		ft_transform_ignore_alpha);
-	ft_image_to_vbuffer(g, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H });
-	char	fps_text[20];
+	render_text(g, (t_point){ 495, 60 }, "so long", 0x8040ff);
+	render_text(g, (t_point){ 510, 110 }, "v0.0.3", 0xcccccc);
+	render_text(g, (t_point){ 450, 210 }, "Developers", 0xffff00);
+	render_link(g, (struct s_link_render_options){ .hover_color = 0x0080ff,
+		.pos = { 420, 260 }, .label = "ms-is-coding",
+		.url = "https://github.com/ms-is-coding", .color = 0xcccccc });
+	render_text(g, (t_point){ 525, 360 }, "Fonts", 0xffff00);
+	render_link(g, (struct s_link_render_options){ .hover_color = 0x0080ff,
+		.pos = { 285, 410 }, .label = "Daydream by DoubleGum",
+		.url = "https://www.dafont.com/daydream-3.font", .color = 0xcccccc });
+	render_text(g, (t_point){ 510, 510 }, "Assets", 0xffff00);
+	render_link(g, (struct s_link_render_options){ .hover_color = 0x0080ff,
+		.url = "https://maaot.itch.io/mossy-cavern", .color = 0xcccccc,
+		.label = "Mossy Cavern by Maaot", .pos = { 285, 560 } });
+	render_link(g, (struct s_link_render_options){ .hover_color = 0x0080ff,
+		.pos = { 105, 610 }, .label = "Free Pixel foods by ghostpixxells",
+		.url = "https://ghostpixxells.itch.io/pixelfood", .color = 0xcccccc });
+	new_button(g, "return", (t_point){ 510, 710 }, menu_click);
+	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
+	return (0);
+}
+
+int	render_main_options_menu(t_game *g)
+{
+	render_blur(g);
+
+	char	fps_text[24];
 	char	gvt_text[24];
-	char	res_text[24];
-	char	dbg_text[20];
-	ft_snprintf(fps_text, 20, "fps        - %i", g->opt.fps);
+	char	dbg_text[24];
+	ft_snprintf(fps_text, 24, "fps        - %i", g->opt.fps);
 	ft_snprintf(gvt_text, 24, "gravity    - %s", get_gvt_preset(g));
-	ft_snprintf(dbg_text, 20, "hitboxes   - %s", g->debug_mode ? "on" : "off");
-	ft_snprintf(res_text, 24, "resolution - %i x %i", g->window.w, g->window.h);
+	ft_snprintf(dbg_text, 24, "hitboxes   - %s", g->debug_mode ? "on" : "off");
 	render_game_name(g);
 	new_button(g, fps_text, (t_point){ 100, 200 }, fps_click);
 	new_button(g, gvt_text, (t_point){ 100, 250 }, gvt_click);
 	new_button(g, dbg_text, (t_point){ 100, 300 }, dbg_click);
-	new_button(g, res_text, (t_point){ 100, 350 }, NULL);
-	new_button(g, "return", (t_point){ 100, 450 }, pause_click);
+	new_button(g, "return", (t_point){ 100, 400 }, menu_click);
+	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
+	return (0);
+}
+
+int	render_options_menu(t_game *g)
+{
+	render_blur(g);
+
+	char	fps_text[24];
+	char	gvt_text[24];
+	char	dbg_text[24];
+	ft_snprintf(fps_text, 24, "fps        - %i", g->opt.fps);
+	ft_snprintf(gvt_text, 24, "gravity    - %s", get_gvt_preset(g));
+	ft_snprintf(dbg_text, 24, "hitboxes   - %s", g->debug_mode ? "on" : "off");
+	render_game_name(g);
+	new_button(g, fps_text, (t_point){ 100, 200 }, fps_click);
+	new_button(g, gvt_text, (t_point){ 100, 250 }, gvt_click);
+	new_button(g, dbg_text, (t_point){ 100, 300 }, dbg_click);
+	new_button(g, "return", (t_point){ 100, 400 }, pause_click);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
 	return (0);
 }
@@ -630,8 +761,6 @@ int	render_options_menu(t_game *g)
 int	render_pause_menu(t_game *g)
 {
 	render_blur(g);
-	ft_image_transform(g, g->frame, g->frame2, (t_rect){ 0, 0, WINDOW_W, WINDOW_H },
-		ft_transform_ignore_alpha);
 	render_game_name(g);
 	new_button(g, "resume", (t_point){ 100, 200 }, resume_click);
 	new_button(g, "options", (t_point){ 100, 250 }, options_click);
@@ -652,6 +781,10 @@ int	render(t_game *g)
 		return (render_pause_menu(g));
 	if (g->state.scene == SCENE_OPTIONS_MENU)
 		return (render_options_menu(g));
+	if (g->state.scene == SCENE_CREDITS)
+		return (render_credits(g));
+	if (g->state.scene == SCENE_MAIN_OPTIONS_MENU)
+		return (render_main_options_menu(g));
 	blur_rendered = false;
 	ft_player_update(g);
 	ft_camera_update(g);
@@ -664,6 +797,10 @@ int	render(t_game *g)
 	ft_image_to_vbuffer(g, g->parallaxes[0], p);
 	ft_render_map(g);
 	ft_render_player(g);
+	char buf[12];
+	ft_snprintf(buf, 12, "%i/%i", g->state.snacks_eaten, g->state.snack_count);
+	render_text(g, (t_point){10, 10}, buf, 0x80ffffff);
+	ft_print_movement(g);
 	if (g->debug_mode)
 		render_hitboxes(g);
 	mlx_put_image_to_window(g->mlx, g->win, g->frame, 0, 0);
@@ -708,7 +845,7 @@ int	ft_render_map(t_game *g)
 				ft_image_to_vbuffer(g, g->textures[TEX_EXIT], (t_rect){
 					t.x, t.y, TILE_SIZE, TILE_SIZE });
 			if (g->map_matrix[j][i] == 'C')
-				ft_image_to_vbuffer(g, g->textures[TEX_COLLECTIBLE], (t_rect){
+				ft_image_to_vbuffer(g, g->textures[TEX_SNACK_0 + ((i + j) & 7)], (t_rect){
 					t.x + 16, t.y + 32, 32, 32 });
 			if (!is_wall(g, i, j)) continue ;
 			int mask = compute_texture_mask(g, i, j);
@@ -757,7 +894,6 @@ int	ft_init_parallax(t_game *g)
 
 int	ft_init_renderer(t_game *g)
 {
-	ft_printf("sizeof(t_game): %i\n", sizeof(t_game));
 	g->mlx = mlx_init();
 	if (!g->mlx)
 		return (1);
@@ -796,59 +932,84 @@ int	ft_init_renderer(t_game *g)
 	return (0);
 }
 
-void	generate_map(t_game *g, unsigned int seed)
+#include <limits.h>
+
+void	generate_map(t_game *g, t_random *rand)
 {
-	ft_printf("\e[95m[DBG]\e[m Seed %i\n", seed);
+	ft_printf("\e[94m[INF]\e[m Seed %i\n", rand->seed);
 	for (int y = 0; y < g->opt.map_height; y++) {
 		for (int x = 0; x < g->opt.map_width; x++) {
 			g->map_matrix[y][x] = '1';
 		}
 	}
 
-	int x = g->opt.map_width / 2;
-	int y = g->opt.map_height / 2;
-	int has_player = 0;
+	g->state.move_count = 0;
+	g->state.snack_count = -1;
+	g->state.snacks_eaten = 0;
+	t_u32 x = g->opt.map_width / 2;
+	t_u32 y = g->opt.map_height / 2;
+	bool	has_player = false;
+	t_u32 last_x = 0;
+	t_u32 last_y = 0;
 
 	g->map_matrix[y][x] = '0';
 
-	for (int i = 0; i < g->opt.map_width * g->opt.map_height; i++) {
-		int dir = ft_rand(seed) % 4;
+	for (t_u32 i = 0; (int)i < g->opt.map_width * g->opt.map_height; i++) {
+		int dir = ft_rand(rand) % 4;
 		switch (dir) {
-			case 0: if (x > 1) x--; break;
-			case 1: if (x < g->opt.map_width - 2) x++; break;
-			case 2: if (y > 1) y--; break;
-			case 3: if (y < g->opt.map_height - 2) y++; break;
+			case 0: if ((int)x > 1) x--; break;
+			case 1: if ((int)x < g->opt.map_width - 2) x++; break;
+			case 2: if ((int)y > 1) y--; break;
+			case 3: if ((int)y < g->opt.map_height - 2) y++; break;
 		}
-		if (x >= g->opt.map_width - 1 || y >= g->opt.map_height - 1)
+		if ((int)x >= g->opt.map_width - 1 || (int)y >= g->opt.map_height - 1)
 			ft_printf("\e[93m[WRN]\e[m invalid position %ix%i\n", g->opt.map_width, g->opt.map_height, x, y);
 		if (g->map_matrix[y][x] == '1')
 			g->map_matrix[y][x] = '0';
 	}
-	set_player_position(g, 1, 98);
 
-	for (int y = 0; y < g->opt.map_height - 1; y++) {
-		for (int x = 0; x < g->opt.map_width; x++) {
+	for (t_u32 y = 0; (int)y < g->opt.map_height - 1; y++) {
+		for (t_u32 x = 0; (int)x < g->opt.map_width; x++) {
 			if (g->map_matrix[y][x] == '0' && g->map_matrix[y + 1][x] == '1') {
-				if (ft_rand(seed) % 5 == 0) {
+				if (ft_rand(rand) % 5 == 0) {
 					g->map_matrix[y][x] = 'C';
+					last_x = x;
+					last_y = y;
+					g->state.snack_count++;
 					if (!has_player)
 					{
 						set_player_position(g, x, y);
+						g->state.snack_count--;
 						g->map_matrix[y][x] = 'P';
-						has_player = 1;
+						has_player = true;
 					}
 				}
 			}
 		}
 	}
+
+	g->map_matrix[last_y][last_x] = 'E';
+
+	if (g->state.snack_count > 0)
+		return ;
+	rand->seed++;
+	generate_map(g, rand);
 }
 
+void *ft_gl_init();
+int ft_gl_pixel_put(void *gl, int x, int y, int color);
+int ft_gl_clear(void *gl);
+
 void	print_map(t_game *g) {
+	void *gl = ft_gl_init();
+	ft_gl_clear(gl);
 	for (int y = 0; y < g->opt.map_height; y++) {
 		for (int x = 0; x < g->opt.map_width; x++) {
-			printf("%c", g->map_matrix[y][x]);
+			//printf("%c", g->map_matrix[y][x]);
+			if (g->map_matrix[y][x] != '1')
+				ft_gl_pixel_put(gl, x, y, 0xffffff);
 		}
-		printf("\n");
+		//printf("\n");
 	}
 }
 
@@ -870,12 +1031,12 @@ int	allocate_map(t_game *g)
 
 int	main(int argc, char *argv[])
 {
-	t_game	g;
-	int		seed;
+	t_game		g;
+	t_random	rand;
 
-	seed = ft_time(NULL);
+	rand = ft_srand(ft_time(NULL));
 	if (argc == 2)
-		seed = ft_atoi_safe(argv[1]);
+		rand = ft_srand(ft_atoi_safe(argv[1]));
 	if (errno != 0)
 	{
 		ft_printf("\e[91m[ERR]\e[m Invalid seed\n");
@@ -886,7 +1047,8 @@ int	main(int argc, char *argv[])
 	allocate_map(&g);
 	ft_printf("\e[94m[INF]\e[m Starting game\n");
 	g.state.is_running = 1;
-	generate_map(&g, seed);
+	generate_map(&g, &rand);
+	print_map(&g);
 	if (ft_init_renderer(&g))
 	{
 		cleanup(&g);

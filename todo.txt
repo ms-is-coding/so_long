@@ -1,7 +1,5 @@
 - AABB collision checks and prevent tunneling
 - physics engine independent of the frame count
-- read settings from file (syntax TBD, probably a simple key-value file)
-- write settings to file
 - read map from file
 - allow users to change display resolution
 - move code to bonus directory and implement the not fancy :( game

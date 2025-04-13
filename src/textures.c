@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:13:32 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/08 17:38:45 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 11:23:51 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,6 +63,26 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_DIAG_TLBR] = "assets/diag-tlbr.xpm",
 [TEX_DIAG_TRBL] = "assets/diag-trbl.xpm",
 [TEX_PLAYER] = "assets/player.xpm",
+[TEX_PLAYER_IDLE_0] = "assets/player_idle_0.xpm",
+[TEX_PLAYER_IDLE_1] = "assets/player_idle_1.xpm",
+[TEX_PLAYER_IDLE_2] = "assets/player_idle_2.xpm",
+[TEX_PLAYER_IDLE_3] = "assets/player_idle_3.xpm",
+[TEX_PLAYER_IDLE_4] = "assets/player_idle_4.xpm",
+[TEX_PLAYER_IDLE_5] = "assets/player_idle_5.xpm",
+[TEX_PLAYER_IDLE_6] = "assets/player_idle_6.xpm",
+[TEX_PLAYER_IDLE_7] = "assets/player_idle_7.xpm",
+[TEX_PLAYER_IDLE_8] = "assets/player_idle_8.xpm",
+[TEX_PLAYER_IDLE_9] = "assets/player_idle_9.xpm",
+[TEX_PLAYER_IDLE_10] = "assets/player_idle_10.xpm",
+[TEX_PLAYER_IDLE_11] = "assets/player_idle_11.xpm",
+[TEX_PLAYER_IDLE_12] = "assets/player_idle_12.xpm",
+[TEX_PLAYER_IDLE_13] = "assets/player_idle_13.xpm",
+[TEX_PLAYER_IDLE_14] = "assets/player_idle_14.xpm",
+[TEX_PLAYER_IDLE_15] = "assets/player_idle_15.xpm",
+[TEX_PLAYER_IDLE_16] = "assets/player_idle_16.xpm",
+[TEX_PLAYER_IDLE_17] = "assets/player_idle_17.xpm",
+[TEX_PLAYER_IDLE_18] = "assets/player_idle_18.xpm",
+[TEX_PLAYER_IDLE_19] = "assets/player_idle_19.xpm",
 [TEX_EXIT] = "assets/exit.xpm",
 [TEX_LOADING_0] = "assets/loading_00.xpm",
 [TEX_LOADING_1] = "assets/loading_01.xpm",
@@ -78,7 +98,14 @@ static char	*g_texture_files[TEX_COUNT] = {
 [TEX_LOADING_11] = "assets/loading_11.xpm",
 [TEX_LOADING_12] = "assets/loading_12.xpm",
 [TEX_LOADING_13] = "assets/loading_13.xpm",
-[TEX_COLLECTIBLE] = "assets/collectible.xpm",
+[TEX_SNACK_0] = "assets/snack0.xpm",
+[TEX_SNACK_1] = "assets/snack1.xpm",
+[TEX_SNACK_2] = "assets/snack2.xpm",
+[TEX_SNACK_3] = "assets/snack3.xpm",
+[TEX_SNACK_4] = "assets/snack4.xpm",
+[TEX_SNACK_5] = "assets/snack5.xpm",
+[TEX_SNACK_6] = "assets/snack6.xpm",
+[TEX_SNACK_7] = "assets/snack7.xpm",
 [TEX_FONT] = "assets/font.xpm"
 };
 

@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/21 22:20:12 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/06 19:57:19 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/13 01:36:42 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,8 +62,15 @@ t_hitbox g_hitboxes[TEX_COUNT] = {
 [TEX_DIAG_TLBR] = { 0, 16, 64, 48 },
 [TEX_DIAG_TRBL] = { 0, 16, 64, 48 },
 [TEX_PLAYER] = { 0, 0, 64, 64 },
-[TEX_COLLECTIBLE] = { 20, 36, 44, 58 },
-[TEX_EXIT] = { 0, 0, 64, 64},
+[TEX_SNACK_0] = { 20, 36, 44, 58 },
+[TEX_SNACK_1] = { 20, 36, 44, 58 },
+[TEX_SNACK_2] = { 20, 36, 44, 58 },
+[TEX_SNACK_3] = { 20, 36, 44, 58 },
+[TEX_SNACK_4] = { 20, 36, 44, 58 },
+[TEX_SNACK_5] = { 20, 36, 44, 58 },
+[TEX_SNACK_6] = { 20, 36, 44, 58 },
+[TEX_SNACK_7] = { 20, 36, 44, 58 },
+[TEX_EXIT] = { 12, 12, 52, 52},
 };
 
 void ft_line(t_game *g, t_point p0, t_point p1)
