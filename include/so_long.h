@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/22 14:14:42 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/13 22:37:43 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/14 00:51:45 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -275,7 +275,7 @@ typedef struct s_game
 	char		**map_matrix;
 }	t_game;
 
-void		generate_map(t_game *g, t_random *rand);
+int			generate_map(t_game *g, t_rng *rng);
 int			ft_render_map(t_game *g);
 int			ft_generate_background(t_game *g);
 int			ft_load_textures(t_game *g);

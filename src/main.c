@@ -6,7 +6,7 @@
 /*   By: smamalig <smamalig@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/17 10:34:52 by smamalig          #+#    #+#             */
-/*   Updated: 2025/04/13 23:06:30 by smamalig         ###   ########.fr       */
+/*   Updated: 2025/04/14 00:54:24 by smamalig         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -266,8 +266,8 @@ void	ft_collect_item(t_game *g)
 				g->map_matrix[y][x] = '0';
 			}
 			if (g->map_matrix[y][x] == 'E' && g->state.snacks_eaten == g->state.snack_count) {
-				t_random rand = ft_srand(ft_time(NULL));
-				generate_map(g, &rand);
+				t_rng rng = ft_rng_init(ft_time(NULL));
+				generate_map(g, &rng);
 			}
 		}
 	}
@@ -657,8 +657,8 @@ void	menu_click(t_game *g)
 
 void	new_game_click(t_game *g)
 {
-	t_random rand = ft_srand(ft_time(NULL));
-	generate_map(g, &rand);
+	t_rng rng = ft_rng_init(ft_time(NULL));
+	generate_map(g, &rng);
 	g->state.scene = SCENE_LEVEL;
 }
 
@@ -679,10 +679,12 @@ void	render_blur(t_game *g)
 		ft_transform_ignore_alpha);
 }
 
+static const char *version = "v0.0.5";
+
 void	render_game_name(t_game *g)
 {
 	render_text(g, (t_point){ 30, 30 }, "so long", 0x8080cc);
-	render_text(g, (t_point){ 330, 30 }, "v0.0.4", 0xc0ffffff);
+	render_text(g, (t_point){ 330, 30 }, version, 0xc0ffffff);
 }
 
 int	render_menu(t_game *g)
@@ -726,7 +728,7 @@ int	render_credits(t_game *g)
 {
 	render_blur(g);
 	render_text(g, (t_point){ 495, 60 }, "so long", 0x8040ff);
-	render_text(g, (t_point){ 510, 110 }, "v0.0.4", 0xcccccc);
+	render_text(g, (t_point){ 510, 110 }, version, 0xcccccc);
 	render_text(g, (t_point){ 450, 210 }, "Developers", 0xffff00);
 	render_link(g, (struct s_link_render_options){ .hover_color = 0x0080ff,
 		.pos = { 420, 260 }, .label = "ms-is-coding",
@@ -961,9 +963,9 @@ int	ft_init_renderer(t_game *g)
 
 #include <limits.h>
 
-void	generate_map(t_game *g, t_random *rand)
+int	generate_map(t_game *g, t_rng *rng)
 {
-	ft_printf("\e[94m[INF]\e[m Seed %i\n", rand->seed);
+	ft_printf("\e[94m[INF]\e[m Seed %i\n", rng->seed);
 	for (int y = 0; y < g->opt.map_height; y++) {
 		for (int x = 0; x < g->opt.map_width; x++) {
 			g->map_matrix[y][x] = '1';
@@ -982,7 +984,7 @@ void	generate_map(t_game *g, t_random *rand)
 	g->map_matrix[y][x] = '0';
 
 	for (t_u32 i = 0; (int)i < g->opt.map_width * g->opt.map_height; i++) {
-		int dir = ft_rand(rand) % 4;
+		int dir = ft_rng_next(rng) % 4;
 		switch (dir) {
 			case 0: if ((int)x > 1) x--; break;
 			case 1: if ((int)x < g->opt.map_width - 2) x++; break;
@@ -998,7 +1000,7 @@ void	generate_map(t_game *g, t_random *rand)
 	for (t_u32 y = 0; (int)y < g->opt.map_height - 1; y++) {
 		for (t_u32 x = 0; (int)x < g->opt.map_width; x++) {
 			if (g->map_matrix[y][x] == '0' && g->map_matrix[y + 1][x] == '1') {
-				if (ft_rand(rand) % 5 == 0) {
+				if (ft_rng_next(rng) % 5 == 0) {
 					g->map_matrix[y][x] = 'C';
 					last_x = x;
 					last_y = y;
@@ -1018,9 +1020,8 @@ void	generate_map(t_game *g, t_random *rand)
 	g->map_matrix[last_y][last_x] = 'E';
 
 	if (g->state.snack_count > 0)
-		return ;
-	rand->seed++;
-	generate_map(g, rand);
+		return (0);
+	return (1);
 }
 
 void	print_map(t_game *g) {
@@ -1051,11 +1052,11 @@ int	allocate_map(t_game *g)
 int	main(int argc, char *argv[])
 {
 	t_game		g;
-	t_random	rand;
+	t_rng		rng;
 
-	rand = ft_srand(ft_time(NULL));
+	rng = ft_rng_init(ft_time(NULL));
 	if (argc == 2)
-		rand = ft_srand(ft_atoi_safe(argv[1]));
+		rng = ft_rng_init(ft_atoi_safe(argv[1]));
 	if (errno != 0)
 	{
 		ft_printf("\e[91m[ERR]\e[m Invalid seed\n");
@@ -1066,7 +1067,11 @@ int	main(int argc, char *argv[])
 	allocate_map(&g);
 	ft_printf("\e[94m[INF]\e[m Starting game\n");
 	g.state.is_running = 1;
-	generate_map(&g, &rand);
+	int	result = generate_map(&g, &rng);
+	while (result) {
+		rng = ft_rng_init(rng.seed + 1);
+		result = generate_map(&g, &rng);
+	}
 	// print_map(&g);
 	if (ft_init_renderer(&g))
 	{
